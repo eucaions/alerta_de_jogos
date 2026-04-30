@@ -3,6 +3,7 @@ from datetime import datetime
 import os
 import json
 from dotenv import load_dotenv
+from bs4 import BeautifulSoup
 
 load_dotenv()
 
@@ -23,9 +24,16 @@ def extrair_canais_mapeados(texto_bruto: str) -> str:
         "sportv": "SporTV",
         "premiere": "Premiere",
         "espn": "ESPN",
+        "espn 2": "ESPN",
+        "espn 3": "ESPN",
+        "espn 4": "ESPN",
+        "espn2": "ESPN",
+        "espn3": "ESPN",
+        "espn4": "ESPN",   
         "tnt" : "TNT",
         "disney": "Disney+",
         "disney+": "Disney+",
+        "disney+ premium": "Disney+",
         "pay-per-view" : "Premiere",
         "ge tv" : "GE TV",
         "xsports": "Xsports",
@@ -36,7 +44,11 @@ def extrair_canais_mapeados(texto_bruto: str) -> str:
         "prime video": "Prime Video",
         "caze": "CazéTV",
         "cazetv": "CazéTV",
-        "caze tv": "CazéTV"
+        "caze tv": "CazéTV",
+        "paramount" : "Paramount+",
+        "paramount+" : "Paramount+",
+        "goat" : "GOAT"
+
     }
 
     achados = set() 
@@ -48,7 +60,6 @@ def extrair_canais_mapeados(texto_bruto: str) -> str:
             achados.add(nome_exibicao) 
 
     if achados:
-        # Convertemos de volta para lista para ordenar e formatar como string
         lista_final = sorted(list(achados))
         return " " + ", ".join(lista_final)
     
@@ -94,10 +105,55 @@ def buscar_transmissao_serper(time_casa, time_fora):
 
 
 
+def buscar_transmissao_doentes_direto(time_casa, time_fora, horario_previsto):
+    url = "https://doentesporfutebol.com.br/guiadejogos/"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+    }
 
+    try:
+        response = requests.get(url, headers=headers, timeout=15)
+        if response.status_code != 200:
+            return "📺 Consultar guia"
 
+        soup = BeautifulSoup(response.text, 'html.parser')
+        paragrafos = soup.find_all('p')
+        
+        jogos_validos = []
 
+        for p in paragrafos:
+            texto_limpo = p.get_text(separator=" ").lower()
+            
+            # Limpamos os nomes para tirar pontos e espaços extras
+            casa_simples = time_casa.lower().replace(".", "").strip()
+            fora_simples = time_fora.lower().replace(".", "").strip()
+            
+            # Pegamos apenas a primeira palavra significativa (ex: "Rivadavia")
+            # Isso ajuda quando a API manda "Independ. Rivadavia"
+            casa_curto = casa_simples.split()[-1] # Pega a última palavra (geralmente o nome real)
+            fora_curto = fora_simples.split()[-1]
 
+            # Verificação robusta
+            contem_casa = casa_curto in texto_limpo
+            contem_fora = fora_curto in texto_limpo
+            contem_horario = horario_previsto in texto_limpo
+
+            if contem_casa or contem_fora:
+                if contem_horario:
+                    print(f"✅ MATCH: {time_casa} x {time_fora} encontrado às {horario_previsto}")
+                    return extrair_canais_mapeados(texto_limpo)
+                else:
+                    print(f"🕒 HORA ERRADA: Achei algo relacionado a {time_casa}/{time_fora}, mas o texto é: '{texto_limpo[:40]}...'")
+
+        if jogos_validos:
+            # Retorna o(s) canal(is) do jogo que bateu o horário
+            return " / ".join(set(jogos_validos))
+
+        return "📺 Canais não identificadosss"
+
+    except Exception as e:
+        print(f"❌ Erro no Scraping: {e}")
+        return "📺 Erro ao processar guia"
 
 def buscar_jogos_do_dia():
     """Busca jogos na API-Football e adiciona a transmissão via Serper"""
@@ -118,9 +174,10 @@ def buscar_jogos_do_dia():
             if item["league"]["id"] in [71, 72, 13, 2]:
                 time_casa = item["teams"]["home"]["name"]
                 time_fora = item["teams"]["away"]["name"]
+                horario_previsto = datetime.fromisoformat(item["fixture"]["date"]).strftime("%H:%M")
                 
                 # CHAMADA DO SERPER: Aqui acontece a mágica
-                transmissao = buscar_transmissao_serper(time_casa, time_fora)
+                transmissao = buscar_transmissao_doentes_direto(time_casa, time_fora,horario_previsto)
                 
                 jogos.append({
                     "casa": time_casa,
