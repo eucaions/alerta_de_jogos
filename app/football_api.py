@@ -124,16 +124,13 @@ def buscar_transmissao_doentes_direto(time_casa, time_fora, horario_previsto):
         for p in paragrafos:
             texto_limpo = p.get_text(separator=" ").lower()
             
-            # Limpamos os nomes para tirar pontos e espaços extras
             casa_simples = time_casa.lower().replace(".", "").strip()
             fora_simples = time_fora.lower().replace(".", "").strip()
             
-            # Pegamos apenas a primeira palavra significativa (ex: "Rivadavia")
-            # Isso ajuda quando a API manda "Independ. Rivadavia"
-            casa_curto = casa_simples.split()[-1] # Pega a última palavra (geralmente o nome real)
+
+            casa_curto = casa_simples.split()[-1] 
             fora_curto = fora_simples.split()[-1]
 
-            # Verificação robusta
             contem_casa = casa_curto in texto_limpo
             contem_fora = fora_curto in texto_limpo
             contem_horario = horario_previsto in texto_limpo
