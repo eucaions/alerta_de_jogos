@@ -44,10 +44,14 @@ def extrair_canais_mapeados(texto_bruto: str) -> str:
         "prime video": "Prime Video",
         "caze": "CazéTV",
         "cazetv": "CazéTV",
+        "cazé tv": "CazéTV",
         "caze tv": "CazéTV",
         "paramount" : "Paramount+",
         "paramount+" : "Paramount+",
-        "goat" : "GOAT"
+        "goat" : "GOAT",
+        "sportynet" : "SportyNet",
+        "record plus" : "RECORD PLUS",
+        "portal r7" : "PORTAL R7"
 
     }
 
