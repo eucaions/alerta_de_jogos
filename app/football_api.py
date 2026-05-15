@@ -71,44 +71,6 @@ def extrair_canais_mapeados(texto_bruto: str) -> str:
 
 
 
-
-
-def buscar_transmissao_serper(time_casa, time_fora):
-    url = "https://google.serper.dev/search"
-    query = f"onde assistir {time_casa} x {time_fora} hoje transmissão brasil"
-    
-    payload = json.dumps({
-        "q": query,
-        "gl": "br",
-        "hl": "pt-br",
-        "autocorrect": True
-    })
-    headers = {
-        'X-API-KEY': SERPER_API_KEY,
-        'Content-Type': 'application/json'
-    }
-
-    try:
-        response = requests.post(url, headers=headers, data=payload)
-        results = response.json()
-        
-        # Tenta pegar a resposta direta do Google (Answer Box)
-        texto_busca = ""
-        if "answerBox" in results:
-            texto_busca = results["answerBox"].get("snippet") or results["answerBox"].get("answer")
-        elif "organic" in results:
-            texto_busca = results["organic"][0].get("snippet")
-
-        return extrair_canais_mapeados(texto_busca)
-
-    except Exception as e:
-        print(f"Erro no Serper: {e}")
-    return "Pesquisar no Google"
-
-
-
-
-
 def buscar_transmissao_doentes_direto(time_casa, time_fora, horario_previsto):
     url = "https://doentesporfutebol.com.br/guiadejogos/"
     headers = {
