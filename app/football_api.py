@@ -107,55 +107,6 @@ def buscar_transmissao_serper(time_casa, time_fora):
 
 
 
-
-
-def buscar_transmissao_doentes_direto(time_casa, time_fora, horario_previsto):
-    url = "https://doentesporfutebol.com.br/guiadejogos/"
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
-    }
-
-    try:
-        response = requests.get(url, headers=headers, timeout=15)
-        if response.status_code != 200:
-            return "📺 Consultar guia"
-
-        soup = BeautifulSoup(response.text, 'html.parser')
-        paragrafos = soup.find_all('p')
-        
-        jogos_validos = []
-
-        for p in paragrafos:
-            texto_limpo = p.get_text(separator=" ").lower()
-            
-            casa_simples = time_casa.lower().replace(".", "").strip()
-            fora_simples = time_fora.lower().replace(".", "").strip()
-            
-
-            casa_curto = casa_simples.split()[-1] 
-            fora_curto = fora_simples.split()[-1]
-
-            contem_casa = casa_curto in texto_limpo
-            contem_fora = fora_curto in texto_limpo
-            contem_horario = horario_previsto in texto_limpo
-
-            if contem_casa or contem_fora:
-                if contem_horario:
-                    print(f"✅ MATCH: {time_casa} x {time_fora} encontrado às {horario_previsto}")
-                    return extrair_canais_mapeados(texto_limpo)
-                else:
-                    print(f"🕒 HORA ERRADA: Achei algo relacionado a {time_casa}/{time_fora}, mas o texto é: '{texto_limpo[:40]}...'")
-
-        if jogos_validos:
-            # Retorna o(s) canal(is) do jogo que bateu o horário
-            return " / ".join(set(jogos_validos))
-
-        return "📺 Canais não identificadosss"
-
-    except Exception as e:
-        print(f"❌ Erro no Scraping: {e}")
-        return "📺 Erro ao processar guia"
-
 def buscar_jogos_do_dia():
     """Busca jogos na API-Football e adiciona a transmissão via Serper"""
     url = "https://v3.football.api-sports.io/fixtures"
@@ -178,7 +129,7 @@ def buscar_jogos_do_dia():
                 horario_previsto = datetime.fromisoformat(item["fixture"]["date"]).strftime("%H:%M")
                 
                 # CHAMADA DO SERPER: Aqui acontece a mágica
-                transmissao = buscar_transmissao_doentes_direto(time_casa, time_fora,horario_previsto)
+                transmissao = buscar_transmissao_serper(time_casa, time_fora,horario_previsto)
                 
                 jogos.append({
                     "casa": time_casa,
