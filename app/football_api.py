@@ -51,7 +51,8 @@ def extrair_canais_mapeados(texto_bruto: str) -> str:
         "goat" : "GOAT",
         "sportynet" : "SportyNet",
         "record plus" : "RECORD PLUS",
-        "portal r7" : "PORTAL R7"
+        "portal r7" : "PORTAL R7",
+        "apple tv" : "Apple TV"
 
     }
 
