@@ -1,12 +1,15 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Form
+from fastapi.responses import FileResponse  
 from contextlib import asynccontextmanager
 import logging
-
-# Importações internas
+from fastapi.templating import Jinja2Templates
 from app.scheduler import iniciar_scheduler
 from app.football_api import buscar_jogos_do_dia
+from fastapi.middleware.cors import CORSMiddleware
 
-# Configuração básica de log para facilitar o debug no terminal
+
+templates = Jinja2Templates(directory="app/templates")
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -25,16 +28,20 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
 @app.get("/")
 def home():
-    return {
-        "status": "online",
-        "msg": "Sistema de Notificação de Jogos rodando",
-        "documentacao": "/docs"
-    }
 
-@app.get("/teste-api")
-def teste_api():
+    return FileResponse("app/templates/index.html")
+
+@app.get("/api/jogos")
+def pegar_jogos_json():
     jogos = buscar_jogos_do_dia()
-    print(f"DEBUG JOGOS: {jogos}") # Olhe o terminal quando acessar essa rota
     return {"dados": jogos}
