@@ -27,10 +27,16 @@ def create_tables():
         conn = psycopg.connect(**config_conexao)
         cursor = conn.cursor()
 
+        cursor.execute("DROP TABLE IF EXISTS user_favorites CASCADE;")
+        cursor.execute("DROP TABLE IF EXISTS teams CASCADE;")
+        cursor.execute("DROP TABLE IF EXISTS leagues CASCADE;")
+
+
+
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS leagues (
                 id SERIAL PRIMARY KEY,
-                api_id INTEGER UNIQUE NOT NULL,
+                api_fixture_id INTEGER UNIQUE NOT NULL,
                 name VARCHAR(100) NOT NULL,
                 country VARCHAR(50)
             );
@@ -39,9 +45,11 @@ def create_tables():
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS teams (
                 id SERIAL PRIMARY KEY,
-                api_id INTEGER UNIQUE NOT NULL,
-                full_name_api VARCHAR(150) NOT NULL,
-                search_name_scraping VARCHAR(100),
+                api_fixture_id INTEGER UNIQUE NOT NULL,
+                api_database_id INTEGER UNIQUE,
+                common_name VARCHAR(100),
+                fullname_api_fixture VARCHAR(100) NOT NULL,
+                fullname_api_database VARCHAR(100),
                 league_id INTEGER REFERENCES leagues(id) ON DELETE SET NULL
             );
         """)

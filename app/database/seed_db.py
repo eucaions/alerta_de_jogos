@@ -67,10 +67,10 @@ def cadastrar_liga_e_times(api_liga_id, nome_liga, pais_liga):
             print(f"   ↳ Tentando salvar: ID {api_team_id} - {nome_time_api}")
             
             cursor.execute("""
-                INSERT INTO teams (api_id, full_name_api, search_name_scraping, league_id)
-                VALUES (%s, %s, %s, %s)
-                ON CONFLICT (api_id) DO NOTHING;
-            """, (api_team_id, nome_time_api, nome_time_api, id_liga_no_banco))
+                INSERT INTO teams (api_fixture_id, fullname_api_fixture, league_id)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (api_fixture_id) DO NOTHING;
+            """, (api_team_id, nome_time_api, id_liga_no_banco))
             
             contador_inseridos += 1
             
