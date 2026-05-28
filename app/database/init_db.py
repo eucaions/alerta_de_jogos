@@ -11,8 +11,7 @@ print(os.getenv("DB_HOST"))
 print(os.getenv("DB_PORT"))
 print(BASE_DIR / ".env")
 
-
-def create_tables():
+def obter_conexao():
     config_conexao = {
         "dbname": os.getenv("DB_NAME"),
         "user": os.getenv("DB_USER"),
@@ -20,11 +19,17 @@ def create_tables():
         "host": os.getenv("DB_HOST"), 
         "port": os.getenv("DB_PORT")
     }
+    return psycopg.connect(**config_conexao)
+
+
+
+
+def create_tables():
 
     conn = None
     try:
         print("🔌 Conectando ao PostgreSQL no Docker...")
-        conn = psycopg.connect(**config_conexao)
+        conn = obter_conexao()
         cursor = conn.cursor()
 
         cursor.execute("DROP TABLE IF EXISTS user_favorites CASCADE;")

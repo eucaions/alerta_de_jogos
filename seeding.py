@@ -4,7 +4,7 @@ import pandas as pd
 URL = "https://api.football-data.org/v4/competitions/BSA/standings"
 
 HEADERS = {
-    'X-Auth-Token': "503aa5af4a8a499eb0395233917af352" 
+    'X-Auth-Token': "senha" 
 }
 
 response = requests.get(URL, headers=HEADERS, timeout=15)
