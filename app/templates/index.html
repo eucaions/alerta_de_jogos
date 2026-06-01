@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📺 Guia de Transmissões de Futebol</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 font-sans min-h-screen">
+
+    <div class="max-w-5xl mx-auto px-4 py-8">
+        <header class="mb-8 border-b border-gray-800 pb-4 flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-bold text-green-400">⚽ Jogos de Hoje</h1>
+                <p class="text-gray-400 text-sm mt-1">Grade de transmissões atualizada dinamicamente</p>
+            </div>
+            <div id="status-loading" class="text-yellow-400 text-sm animate-pulse">📡 Buscando jogos e rodando scraping...</div>
+        </header>
+
+        <div class="bg-gray-800 rounded-xl shadow-xl overflow-hidden border border-gray-700">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-gray-750 text-gray-400 text-xs uppercase border-b border-gray-700">
+                        <th class="px-6 py-4">Horário</th>
+                        <th class="px-6 py-4">Campeonato</th>
+                        <th class="px-6 py-4 text-center">Confronto</th>
+                        <th class="px-6 py-4 text-right">Onde Assistir</th>
+                    </tr>
+                </thead>
+                <tbody id="tabela-jogos" class="divide-y divide-gray-700">
+                </tbody>
+            </table>
+        </div>
+        <div class="mt-8 bg-gray-800 rounded-xl shadow-xl overflow-hidden border border-gray-700 p-4">
+            <h2 class="text-xl font-bold text-green-400 mb-4 font-sans flex items-center gap-2">
+                📊 Painel Analítico Completo
+            </h2>
+            <div class="w-full overflow-hidden rounded-lg shadow-inner bg-gray-900">
+                <iframe 
+                    title="finalmenteDadosBr" 
+                    class="w-full aspect-[16/9] min-h-[450px] border-0"
+                    src="https://app.powerbi.com/view?r=eyJrIjoiNWFmOTNiYjQtYTQ0ZC00MjZmLTkzMDgtNzVhNjFhYzliYjVjIiwidCI6ImIyZTE2Mjk3LTJlZDYtNDFiOC1iODIyLWE5NTRlOTViZDJmMCIsImMiOjR9" 
+                    allowFullScreen="true">
+                </iframe>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Executa assim que a página carrega no navegador
+        async function carregarJogos() {
+            try {
+                // Faz a requisição para a rota JSON do FastAPI
+                const response = await fetch('/api/jogos');
+                const result = await response.json();
+                const jogos = result.dados;
+                
+                const tabela = document.getElementById('tabela-jogos');
+                const status = document.getElementById('status-loading');
+                tabela.innerHTML = ''; // Limpa a tabela
+                
+                if (!jogos || jogos.length === 0) {
+                    tabela.innerHTML = `<tr><td colspan="4" class="px-6 py-12 text-center text-gray-500">📭 Nenhum jogo encontrado para hoje.</td></tr>`;
+                    status.innerText = '✅ Atualizado';
+                    return;
+                }
+
+                // Varre os jogos e monta o HTML de cada linha
+                jogos.forEach(jogo => {
+                    const linha = `
+                        <tr class="hover:bg-gray-700/50 transition-colors">
+                            <td class="px-6 py-4 font-mono text-sm text-green-400 font-bold">${jogo.horario}</td>
+                            <td class="px-6 py-4 text-sm text-gray-300">${jogo.liga}</td>
+                            <td class="px-6 py-4 text-base font-semibold text-center">
+                                <span class="inline-block min-w-[120px] text-right">${jogo.casa}</span>
+                                <span class="mx-3 text-gray-500 font-normal text-sm">x</span>
+                                <span class="inline-block min-w-[120px] text-left">${jogo.fora}</span>
+                            </td>
+                            <td class="px-6 py-4 text-right">
+                                <span class="inline-block bg-blue-600/20 text-blue-400 border border-blue-500/30 px-3 py-1 rounded-lg text-sm font-medium">
+                                    ${jogo.transmissao || 'Não encontrada'}
+                                </span>
+                            </td>
+                        </tr>
+                    `;
+                    tabela.innerHTML += linha;
+                });
+                
+                status.innerText = '✅ Atualizado';
+                status.classList.remove('animate-pulse', 'text-yellow-400');
+                status.classList.add('text-green-400');
+
+            } catch (error) {
+                console.error("Erro ao carregar a interface:", error);
+                document.getElementById('tabela-jogos').innerHTML = `<tr><td colspan="4" class="px-6 py-12 text-center text-red-500">❌ Erro ao carregar dados do servidor.</td></tr>`;
+            }
+        }
+
+        carregarJogos();
+    </script>
+</body>
+</html>

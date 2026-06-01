@@ -4,6 +4,7 @@ import os
 import json
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
+from app.database.queries import obter_termo_busca_time
 
 load_dotenv()
 
@@ -51,7 +52,8 @@ def extrair_canais_mapeados(texto_bruto: str) -> str:
         "goat" : "GOAT",
         "sportynet" : "SportyNet",
         "record plus" : "RECORD PLUS",
-        "portal r7" : "PORTAL R7"
+        "portal r7" : "PORTAL R7",
+        "apple tv" : "Apple TV"
 
     }
 
@@ -119,7 +121,7 @@ def buscar_transmissao_doentes_direto(time_casa, time_fora, horario_previsto):
         return "📺 Erro ao processar guia"
 
 def buscar_jogos_do_dia():
-    """Busca jogos na API-Football e adiciona a transmissão via Serper"""
+    """Busca jogos na API-Football e adiciona a transmissão via Scraping com Fallback do Banco"""
     url = "https://v3.football.api-sports.io/fixtures"
     headers = {'x-apisports-key': FOOTBALL_API_KEY}
     params = {
@@ -135,21 +137,31 @@ def buscar_jogos_do_dia():
         for item in data.get("response", []):
             # IDs: 71 (Série A), 72 (Série B), 13 (Libertadores), 2 (Champions)
             if item["league"]["id"] in [71, 72, 13, 2]:
-                time_casa = item["teams"]["home"]["name"]
-                time_fora = item["teams"]["away"]["name"]
+                
+                id_casa_api = item["teams"]["home"]["id"]
+                id_fora_api = item["teams"]["away"]["id"]
+                
+                name_casa_api = item["teams"]["home"]["name"]
+                name_fora_api = item["teams"]["away"]["name"]
+                
                 horario_previsto = datetime.fromisoformat(item["fixture"]["date"]).strftime("%H:%M")
                 
-                # CHAMADA DO SERPER: Aqui acontece a mágica
-                transmissao = buscar_transmissao_doentes_direto(time_casa, time_fora,horario_previsto)
+
+                termo_busca_casa = obter_termo_busca_time(id_casa_api) or name_casa_api
+                termo_busca_fora = obter_termo_busca_time(id_fora_api) or name_fora_api
+                
+                print(f"🔄 Tradução: {name_casa_api} -> {termo_busca_casa} | {name_fora_api} -> {termo_busca_fora}")
+                
+                transmissao = buscar_transmissao_doentes_direto(termo_busca_casa, termo_busca_fora, horario_previsto)
                 
                 jogos.append({
-                    "casa": time_casa,
-                    "fora": time_fora,
-                    "horario": datetime.fromisoformat(item["fixture"]["date"]).strftime("%H:%M"),
+                    "casa": name_casa_api,
+                    "fora": name_fora_api,
+                    "horario": horario_previsto,
                     "liga": item["league"]["name"],
                     "transmissao": transmissao
                 })
         return jogos
     except Exception as e:
-        print(f"Erro ao buscar: {e}")
+        print(f"❌ Erro ao buscar jogos e processar transmissão: {e}")
         return []
