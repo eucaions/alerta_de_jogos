@@ -3,6 +3,7 @@ import requests
 import psycopg2
 from dotenv import load_dotenv
 from pathlib import Path
+import pandas as pd
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -84,6 +85,28 @@ def cadastrar_liga_e_times(api_liga_id, nome_liga, pais_liga):
         cursor.close()
         conn.close()
 
+def futPythonSeederTeams(country, league, season):
+    """ conn = conectar_banco()
+    cursor = conn.cursor() """
+    FUT_PYTHON_KEY= os.getenv("FUT_PYTHON_KEY")
+    url = f"https://futpythontrader.com.br/api/download/{country}/{league}/{season}?api_key={FUT_PYTHON_KEY}"
+    df_fut = pd.read_csv(url)
+    teams = pd.concat([
+        df_fut["Home"].str.upper(),
+        df_fut["Away"].str.upper()
+    ]).unique().tolist()
+    print(teams)
+
+
+def seeding_teams_and_leagues():
+    df = pd.read_json("national_leagues_one_par.json")
+    print(df)
+
+    
+
+
 if __name__ == "__main__":
-    cadastrar_liga_e_times(api_liga_id=72, nome_liga="Brasileirão Série B", pais_liga="Brazil")
+    """ cadastrar_liga_e_times(api_liga_id=72, nome_liga="Brasileirão Série B", pais_liga="Brazil") """
+    """ futPythonSeederTeams("brazil", "serie-b", "2026") """
+    seeding_teams_and_leagues()
     pass

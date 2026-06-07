@@ -24,8 +24,9 @@ def iniciar_scheduler():
 
     scheduler.add_job(
         verificar_jogos,
-        "interval",
-        seconds=30,
+        "cron",
+        hour=6,
+        minute=0,
         timezone="America/Sao_Paulo"
     )
 
