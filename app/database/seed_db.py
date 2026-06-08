@@ -87,7 +87,7 @@ def cadastrar_liga_e_times(api_liga_id, nome_liga, pais_liga):
         cursor.close()
         conn.close()
 
-def futPythonSeederTeams(conn, country, league, season, id_league=None):
+def futPythonSeederTeams(conn, country, league, season, league_id=None):
     FUT_PYTHON_KEY = os.getenv("FUT_PYTHON_KEY")
     url = f"https://futpythontrader.com.br/api/download/{country}/{league}/{season}?api_key={FUT_PYTHON_KEY}"
     
@@ -103,17 +103,16 @@ def futPythonSeederTeams(conn, country, league, season, id_league=None):
 
     cursor = conn.cursor()
     
-    # Prepara os dados no formato de tuplas para o execute_batch
-    dados_teams = [(team_name, id_league, None) for team_name in teams]
+    dados_teams = [(team_name, league_id, None) for team_name in teams]
     
     query = """
-        INSERT INTO teams (fullname, id_league, common_name) 
+        INSERT INTO teams (name, league_id, common_name) 
         VALUES (%s, %s, %s) 
-        ON CONFLICT (fullname) 
+        ON CONFLICT (name) 
         DO UPDATE SET 
-            id_league = CASE 
-                WHEN EXCLUDED.id_league IS NOT NULL THEN EXCLUDED.id_league 
-                ELSE teams.id_league 
+            league_id = CASE 
+                WHEN EXCLUDED.league_id IS NOT NULL THEN EXCLUDED.league_id 
+                ELSE teams.league_id 
             END;
     """
     
@@ -165,19 +164,19 @@ def seeding_teams_and_leagues():
             league = item["league"]
             country = item["country"]
 
-            id_league = None  
+            league_id = None  
 
             if is_national:
                 cursor.execute("SELECT id FROM leagues WHERE name = %s;", (league,))
                 result = cursor.fetchone()
                 if result:
-                    id_league = result[0]
+                    league_id = result[0]
             else:
                 pass
 
             print(f"Buscando times para: {league} ({'Nacional' if is_national else 'Internacional'}) | Temporada: {season}...")
             
-            futPythonSeederTeams(conn, country=country, league=league, season=season, id_league=id_league)
+            futPythonSeederTeams(conn, country=country, league=league, season=season, league_id=league_id)
 
     cursor.close()
     conn.close()

@@ -4,5 +4,7 @@
   {"league": "ligue-1", "country": "france"},
   {"league": "serie-a", "country": "italy"},
   {"league": "liga-portugal", "country": "portugal"},
-  {"league": "bundesliga", "country": "germany"}
+  {"league": "bundesliga", "country": "germany"},
+  {"league": "laliga", "country": "spain"}
+
 ]
