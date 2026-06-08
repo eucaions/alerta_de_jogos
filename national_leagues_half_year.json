@@ -1,11 +1,8 @@
 [
-  {"league": "serie-a-betano", "country": "brazil"},
-  {"league": "serie-b", "country": "brazil"},
   {"league": "premier-league", "country": "england"},
   {"league": "championship", "country": "england"},
   {"league": "ligue-1", "country": "france"},
   {"league": "serie-a", "country": "italy"},
   {"league": "liga-portugal", "country": "portugal"},
-  {"league": "mls", "country": "usa"},
   {"league": "bundesliga", "country": "germany"}
 ]

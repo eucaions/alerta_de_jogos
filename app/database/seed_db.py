@@ -1,6 +1,7 @@
 import os
 import requests
 import psycopg2
+import json
 from dotenv import load_dotenv
 from pathlib import Path
 import pandas as pd
@@ -92,17 +93,21 @@ def futPythonSeederTeams(country, league, season):
     url = f"https://futpythontrader.com.br/api/download/{country}/{league}/{season}?api_key={FUT_PYTHON_KEY}"
     df_fut = pd.read_csv(url)
     teams = pd.concat([
-        df_fut["Home"].str.upper(),
-        df_fut["Away"].str.upper()
+        df_fut["Home"].str.lower(),
+        df_fut["Away"].str.lower()
     ]).unique().tolist()
     print(teams)
 
 
 def seeding_teams_and_leagues():
-    df = pd.read_json("national_leagues_one_par.json")
-    print(df)
+    with open("national_leagues_full_year.json", "r") as f:
+        league_fy = json.load(f)
+    with open("national_leagues_half_year.json", "r") as g:
+        league_hy = json.load(g)
 
-    
+    data_db = [(item["league"], item["country"]) for item in league_fy]
+    data_db = [(item["league"], item["country"]) for item in league_hy]
+
 
 
 if __name__ == "__main__":
