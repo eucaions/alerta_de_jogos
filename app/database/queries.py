@@ -5,18 +5,18 @@ from app.database.init_db import obter_conexao
 
 load_dotenv()
 
-def obter_termo_busca_time(api_fixture_id):
+def obter_termo_busca_time(id):
 
     conn = obter_conexao()
     cursor = conn.cursor()
     
     try:
         query = """
-            SELECT COALESCE(common_name, fullname_api_database, fullname_api_fixture) 
+            SELECT COALESCE(common_name, name) 
             FROM teams 
-            WHERE api_fixture_id = %s;
+            WHERE id = %s;
         """
-        cursor.execute(query, (api_fixture_id,))
+        cursor.execute(query, (id,))
         resultado = cursor.fetchone()
         
         return resultado[0] if resultado else None
@@ -32,14 +32,14 @@ def listar_todos_os_times():
     conn = obter_conexao()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT id, fullname_api_fixture, common_name FROM teams ORDER BY fullname_api_fixture ASC;")
+    cursor.execute("SELECT id, name, common_name FROM teams ORDER BY name ASC;")
     rows = cursor.fetchall()
 
     times = []
     for row in rows:
         times.append({
             "id": row[0],
-            "api_name": row[1],
+            "name": row[1],
             "common_name": row[2] or ""
         })
 
