@@ -2,6 +2,8 @@ import os
 import requests
 import psycopg2
 import json
+import re
+
 from dotenv import load_dotenv
 from pathlib import Path
 import pandas as pd
@@ -87,7 +89,7 @@ def cadastrar_liga_e_times(api_liga_id, nome_liga, pais_liga):
         cursor.close()
         conn.close()
 
-def futPythonSeederTeams(conn, country, league, season, league_id=None):
+def futPythonSeederTeams(conn, country, league, season, league_id=None, international = False):
     FUT_PYTHON_KEY = os.getenv("FUT_PYTHON_KEY")
     url = f"https://futpythontrader.com.br/api/download/{country}/{league}/{season}?api_key={FUT_PYTHON_KEY}"
     
@@ -103,6 +105,10 @@ def futPythonSeederTeams(conn, country, league, season, league_id=None):
 
     cursor = conn.cursor()
     
+    if(international):
+        teams = [re.sub(r'\s*\([^)]*\)', '', item) for item in teams]
+
+
     dados_teams = [(team_name, league_id, None) for team_name in teams]
     
     query = """
@@ -174,9 +180,16 @@ def seeding_teams_and_leagues():
             else:
                 pass
 
-            print(f"Buscando times para: {league} ({'Nacional' if is_national else 'Internacional'}) | Temporada: {season}...")
+            if(is_national):
+                print(f"Buscando times para: {league} (Nacional) | Temporada: {season}...")
+                futPythonSeederTeams(conn, country=country, league=league, season=season, league_id=league_id)
+
+            else:
+                print(f"Buscando times para: {league} (Internacional) | Temporada: {season}...")
+                futPythonSeederTeams(conn, country=country, league=league, season=season, league_id=league_id, international=True)
+
+
             
-            futPythonSeederTeams(conn, country=country, league=league, season=season, league_id=league_id)
 
     cursor.close()
     conn.close()
