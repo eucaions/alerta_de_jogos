@@ -1,9 +1,13 @@
 import os
 import requests
 import psycopg2
+import json
+import re
+
 from dotenv import load_dotenv
 from pathlib import Path
 import pandas as pd
+from psycopg2.extras import execute_batch
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -85,25 +89,111 @@ def cadastrar_liga_e_times(api_liga_id, nome_liga, pais_liga):
         cursor.close()
         conn.close()
 
-def futPythonSeederTeams(country, league, season):
-    """ conn = conectar_banco()
-    cursor = conn.cursor() """
-    FUT_PYTHON_KEY= os.getenv("FUT_PYTHON_KEY")
+def futPythonSeederTeams(conn, country, league, season, league_id=None, international = False):
+    FUT_PYTHON_KEY = os.getenv("FUT_PYTHON_KEY")
     url = f"https://futpythontrader.com.br/api/download/{country}/{league}/{season}?api_key={FUT_PYTHON_KEY}"
-    df_fut = pd.read_csv(url)
-    teams = pd.concat([
-        df_fut["Home"].str.upper(),
-        df_fut["Away"].str.upper()
-    ]).unique().tolist()
-    print(teams)
+    
+    try:
+        df_fut = pd.read_csv(url)
+        teams = pd.concat([
+            df_fut["Home"].astype(str).str.strip().str.lower(),
+            df_fut["Away"].astype(str).str.strip().str.lower()
+        ]).unique().tolist()
+    except Exception as e:
+        print(f"⚠️ Erro ao baixar ou processar times da liga {league} ({season}): {e}")
+        return
+
+    cursor = conn.cursor()
+    
+    if(international):
+        teams = [re.sub(r'\s*\([^)]*\)', '', item) for item in teams]
+
+
+    dados_teams = [(team_name, league_id, None) for team_name in teams]
+    
+    query = """
+        INSERT INTO teams (name, league_id, common_name) 
+        VALUES (%s, %s, %s) 
+        ON CONFLICT (name) 
+        DO UPDATE SET 
+            league_id = CASE 
+                WHEN EXCLUDED.league_id IS NOT NULL THEN EXCLUDED.league_id 
+                ELSE teams.league_id 
+            END;
+    """
+    
+    execute_batch(cursor, query, dados_teams)
+    conn.commit() 
+    cursor.close()
+    print(f"⚽ {len(teams)} times processados para a liga: {league}")
 
 
 def seeding_teams_and_leagues():
-    df = pd.read_json("national_leagues_one_par.json")
-    print(df)
+    # 1. Carrega todos os arquivos JSON
+    with open("national_leagues_full_year.json", "r") as f:
+        nat_fy = json.load(f)
+    with open("national_leagues_half_year.json", "r") as f:
+        nat_hy = json.load(f)
+    with open("international_leagues_full_year.json", "r") as f:
+        inter_fy = json.load(f)
+    with open("international_leagues_half_year.json", "r") as f:
+        inter_hy = json.load(f)
 
-    
+    todas_ligas = []
+    todas_ligas.extend(nat_fy)
+    todas_ligas.extend(nat_hy)
+    todas_ligas.extend(inter_fy)
+    todas_ligas.extend(inter_hy)
 
+
+    ligas_unicas = {(item["league"], item["country"]) for item in todas_ligas}
+    data_db = list(ligas_unicas)
+
+    conn = conectar_banco()
+    cursor = conn.cursor()
+
+    print("Iniciando seed de ligas...")
+    query_leagues = "INSERT INTO leagues (name, country) VALUES (%s, %s) ON CONFLICT DO NOTHING;"
+    execute_batch(cursor, query_leagues, data_db)
+    conn.commit()
+
+
+    grupos_temporadas = [
+        (nat_fy, "2026", True),         
+        (nat_hy, "2025-2026", True),    
+        (inter_fy, "2026", False),
+        (inter_hy, "2025-2026", False)
+    ]
+
+    for lista_json, season, is_national in grupos_temporadas:
+        for item in lista_json:
+            league = item["league"]
+            country = item["country"]
+
+            league_id = None  
+
+            if is_national:
+                cursor.execute("SELECT id FROM leagues WHERE name = %s;", (league,))
+                result = cursor.fetchone()
+                if result:
+                    league_id = result[0]
+            else:
+                pass
+
+            if(is_national):
+                print(f"Buscando times para: {league} (Nacional) | Temporada: {season}...")
+                futPythonSeederTeams(conn, country=country, league=league, season=season, league_id=league_id)
+
+            else:
+                print(f"Buscando times para: {league} (Internacional) | Temporada: {season}...")
+                futPythonSeederTeams(conn, country=country, league=league, season=season, league_id=league_id, international=True)
+
+
+            
+
+    cursor.close()
+    conn.close()
+    print("Sucesso")
 
 if __name__ == "__main__":
     """ cadastrar_liga_e_times(api_liga_id=72, nome_liga="Brasileirão Série B", pais_liga="Brazil") """
