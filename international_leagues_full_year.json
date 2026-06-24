@@ -1,4 +1,4 @@
 [
-  {"league": "copa-libertadores", "country": "south-america"},
-  {"league": "copa-sudamericana", "country": "south-america"}
+  {"league": "copa-libertadores", "country": "south-america", "code" : "COPA LIBERTADORES"},
+  {"league": "copa-sudamericana", "country": "south-america", "code" : "COPA SUDAMERICANA"}
 ]

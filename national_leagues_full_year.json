@@ -1,5 +1,5 @@
 [
-  {"league": "serie-a-betano", "country": "brazil"},
-  {"league": "serie-b", "country": "brazil"},
-  {"league": "mls", "country": "usa"}
+  {"league": "serie-a-betano", "country": "brazil", "code" : "BRAZIL 1"},
+  {"league": "serie-b", "country": "brazil", "code" : "BRAZIL 2"},
+  {"league": "mls", "country": "usa", "code" : "USA 1"}
 ]
