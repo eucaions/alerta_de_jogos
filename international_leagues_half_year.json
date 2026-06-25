@@ -1,5 +1,5 @@
 [
-  {"league": "champions-league", "country": "europe"},
-  {"league": "europa-league", "country": "europe"},
-  {"league": "europa-conference-league", "country": "europe"}
+  {"league": "champions-league", "country": "europe", "code" : "EUROPA CHAMPIONS LEAGUE"},
+  {"league": "europa-league", "country": "europe", "code" : "EUROPA LEAGUE"},
+  {"league": "europa-conference-league", "country": "europe", "code" : "EUROPA CONFERENCE LEAGUE"}
 ]
