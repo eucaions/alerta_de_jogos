@@ -1,4 +1,4 @@
 [
-  {"league": "copa-libertadores", "country": "south-america", "code" : "COPA LIBERTADORES"},
-  {"league": "copa-sudamericana", "country": "south-america", "code" : "COPA SUDAMERICANA"}
+  {"league": "copa-libertadores", "country": "south-america", "code" : "COPA LIBERTADORES", "name_api" : "CONMEBOL Libertadores", "id_api" : "13"},
+  {"league": "copa-sudamericana", "country": "south-america", "code" : "COPA SUDAMERICANA", "name_api" : "CONMEBOL Sudamericana", "id_api" : "11"}
 ]

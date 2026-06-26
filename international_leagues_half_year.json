@@ -1,5 +1,5 @@
 [
-  {"league": "champions-league", "country": "europe", "code" : "EUROPA CHAMPIONS LEAGUE"},
-  {"league": "europa-league", "country": "europe", "code" : "EUROPA LEAGUE"},
-  {"league": "europa-conference-league", "country": "europe", "code" : "EUROPA CONFERENCE LEAGUE"}
+  {"league": "champions-league", "country": "europe", "code" : "EUROPA CHAMPIONS LEAGUE", "name_api" : "UEFA Champions League", "id_api" : "2"},
+  {"league": "europa-league", "country": "europe", "code" : "EUROPA LEAGUE", "name_api" : "UEFA Europa League", "id_api" : "3"},
+  {"league": "europa-conference-league", "country": "europe", "code" : "EUROPA CONFERENCE LEAGUE", "name_api" : "UEFA Europa Conference League", "id_api" : "848"}
 ]
