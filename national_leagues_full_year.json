@@ -1,5 +1,5 @@
 [
-  {"league": "serie-a-betano", "country": "brazil", "code" : "BRAZIL 1"},
-  {"league": "serie-b", "country": "brazil", "code" : "BRAZIL 2"},
-  {"league": "mls", "country": "usa", "code" : "USA 1"}
+  {"league": "serie-a-betano", "country": "brazil", "code" : "BRAZIL 1", "name_api" : "Serie A"},
+  {"league": "serie-b", "country": "brazil", "code" : "BRAZIL 2", "name_api" : "Serie B"},
+  {"league": "mls", "country": "usa", "code" : "USA 1", "name_api" : "MLS All-Star"}
 ]
