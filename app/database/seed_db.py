@@ -89,6 +89,87 @@ def cadastrar_liga_e_times(api_liga_id, nome_liga, pais_liga):
         cursor.close()
         conn.close()
 
+
+
+def oficialSeed(ligas = []):
+    conn = conectar_banco()
+    FOOTBALL_API_KEY = os.getenv("FOOTBALL_API_KEY")
+
+    cursor = conn.cursor()
+
+    with open("countries.json", "r") as f:
+        countries_json = json.load(f)
+
+    countries = []
+    for i in countries_json:
+        vet = [i['name']]
+        countries.append(vet)
+
+    headers = {
+        "x-rapidapi-key": FOOTBALL_API_KEY, 
+    } 
+    try:
+        query_country = "INSERT INTO country (name) VALUES (%s) ON CONFLICT DO NOTHING;"
+        execute_batch(cursor,query_country,countries)
+
+
+
+        for id in ligas:
+            url_api_league = f"https://v3.football.api-sports.io/leagues?id={id}"
+            response = requests.get(url_api_league, headers=headers).json()
+            liga = response.get('response', [])
+            nome_liga = liga['league']['name']
+            nome_pais = liga['country']['name']
+
+            query_busca = "SELECT c.id FROM country AS c WHERE c.name = (%s);"
+            cursor.execute(query_busca, (nome_pais))
+            result = cursor.fetchone()
+
+            query_insert = "INSERT INTO league (name, api_id, api_name, country_id) values (%s, %s, %s, %s) ON CONFLICT (api_fixture_id) DO NOTHING;"
+            cursor.execute(query_insert, (None, id, nome_liga, result))
+
+
+            url_api_teams = f"https://v3.football.api-sports.io/teams?league={id}&season=2024"
+            response = requests.get(url_api_teams, headers=headers).json()
+            lista_times = response.get('response', [])
+            for item in lista_times:
+                team_data = item.get('team')
+                if not team_data:
+                    print("⚠️ Estrutura do JSON inválida para este item, pulando...")
+                    continue
+                    
+                api_team_id = team_data.get('id')
+                nome_time_api = team_data.get('name')
+                
+                # --- PRINT DE SEGURANÇA 2 ---
+                print(f"   ↳ Tentando salvar: ID {api_team_id} - {nome_time_api}")
+                
+                cursor.execute("""
+                    INSERT INTO teams (api_id, api_name, country_id)
+                    VALUES (%s, %s, %s)
+                    ON CONFLICT (api_id) DO NOTHING;
+                """, (api_team_id, nome_time_api, result))
+                                
+            conn.commit()
+    finally:
+        cursor.close()
+        conn.close()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 def futPythonSeederTeams(conn, country, league, season, league_id=None, international = False):
     FUT_PYTHON_KEY = os.getenv("FUT_PYTHON_KEY")
     url = f"https://futpythontrader.com.br/api/download/{country}/{league}/{season}?api_key={FUT_PYTHON_KEY}"

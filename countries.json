@@ -1,13 +1,11 @@
 [
-    {"name" : "brazil"},
-    {"name" : "england"},
-    {"name" : "europe"},
-    {"name" : "france"},
-    {"name" : "germany"},
-    {"name" : "italy"},
-    {"name" : "portugal"},
-    {"name" : "south-america"},
-    {"name" : "spain"},
-    {"name" : "usa"},
-    {"name" : "world"}
+    {"name" : "Brazil"},
+    {"name" : "England"},
+    {"name" : "France"},
+    {"name" : "Germany"},
+    {"name" : "Italy"},
+    {"name" : "Portugal"},
+    {"name" : "Spain"},
+    {"name" : "Usa"},
+    {"name" : "World"}
 ]
