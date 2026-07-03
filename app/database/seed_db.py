@@ -111,22 +111,37 @@ def oficialSeed(ligas = []):
     try:
         query_country = "INSERT INTO country (name) VALUES (%s) ON CONFLICT DO NOTHING;"
         execute_batch(cursor,query_country,countries)
-
+        conn.commit()
 
 
         for id in ligas:
             url_api_league = f"https://v3.football.api-sports.io/leagues?id={id}"
             response = requests.get(url_api_league, headers=headers).json()
-            liga = response.get('response', [])
-            nome_liga = liga['league']['name']
-            nome_pais = liga['country']['name']
+            lista_liga = response.get('response', [])
+
+            if not lista_liga:
+                print(f"⚠️ Nenhuma liga encontrada para o ID {id}, pulando...")
+                continue
+
+            dados_liga = lista_liga[0]
+            nome_liga = dados_liga['league']['name']
+            nome_pais = dados_liga['country']['name']
 
             query_busca = "SELECT c.id FROM country AS c WHERE c.name = (%s);"
-            cursor.execute(query_busca, (nome_pais))
+            cursor.execute(query_busca, (nome_pais,))
             result = cursor.fetchone()
 
-            query_insert = "INSERT INTO league (name, api_id, api_name, country_id) values (%s, %s, %s, %s) ON CONFLICT (api_fixture_id) DO NOTHING;"
-            cursor.execute(query_insert, (None, id, nome_liga, result))
+            if not result:
+                continue
+
+            country_id = result[0]
+
+            query_insert = """
+                INSERT INTO league (name, api_id, api_name, country_id) 
+                VALUES (%s, %s, %s, %s) 
+                ON CONFLICT (api_id) DO NOTHING;
+            """
+            cursor.execute(query_insert, (None, id, nome_liga, country_id))
 
 
             url_api_teams = f"https://v3.football.api-sports.io/teams?league={id}&season=2024"
@@ -135,22 +150,24 @@ def oficialSeed(ligas = []):
             for item in lista_times:
                 team_data = item.get('team')
                 if not team_data:
-                    print("⚠️ Estrutura do JSON inválida para este item, pulando...")
                     continue
                     
                 api_team_id = team_data.get('id')
                 nome_time_api = team_data.get('name')
                 
-                # --- PRINT DE SEGURANÇA 2 ---
                 print(f"   ↳ Tentando salvar: ID {api_team_id} - {nome_time_api}")
                 
                 cursor.execute("""
                     INSERT INTO teams (api_id, api_name, country_id)
                     VALUES (%s, %s, %s)
                     ON CONFLICT (api_id) DO NOTHING;
-                """, (api_team_id, nome_time_api, result))
+                """, (api_team_id, nome_time_api, country_id))
                                 
             conn.commit()
+
+    except Exception as e:
+            conn.rollback()
+            print(f"❌ Erro fatal durante o seed: {e}")
     finally:
         cursor.close()
         conn.close()
