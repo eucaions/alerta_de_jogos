@@ -158,10 +158,10 @@ def oficialSeed(ligas = []):
                 print(f"   ↳ Tentando salvar: ID {api_team_id} - {nome_time_api}")
                 
                 cursor.execute("""
-                    INSERT INTO teams (api_id, api_name, country_id)
-                    VALUES (%s, %s, %s)
+                    INSERT INTO teams (api_id, name, country_id, site_name)
+                    VALUES (%s, %s, %s, %s)
                     ON CONFLICT (api_id) DO NOTHING;
-                """, (api_team_id, nome_time_api, country_id))
+                """, (api_team_id, nome_time_api, country_id, None))
                                 
             conn.commit()
 

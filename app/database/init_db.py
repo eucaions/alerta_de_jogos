@@ -32,26 +32,35 @@ def create_tables():
         conn = obter_conexao()
         cursor = conn.cursor()
 
-        cursor.execute("DROP TABLE IF EXISTS user_favorites CASCADE;")
-        cursor.execute("DROP TABLE IF EXISTS teams CASCADE;")
-        cursor.execute("DROP TABLE IF EXISTS leagues CASCADE;")
-
+        cursor.execute("DROP TABLE IF EXISTS user_favorite CASCADE;")
+        cursor.execute("DROP TABLE IF EXISTS team CASCADE;")
+        cursor.execute("DROP TABLE IF EXISTS league CASCADE;")
+        cursor.execute("DROP TABLE IF EXISTS fixture CASCADE;")
 
 
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS leagues (
+            CREATE TABLE IF NOT EXISTS country (
                 id SERIAL PRIMARY KEY,
                 name VARCHAR(100) NOT NULL,
-                country VARCHAR(50)
+            );
+        """)
+
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS league (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(100) NOT NULL,
+                country_id INTEGER REFERENCES country(id) ON DELETE SET NULL
             );
         """)
 
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS teams (
                 id SERIAL PRIMARY KEY,
-                name VARCHAR(100) UNIQUE,
-                common_name VARCHAR(100),
-                league_id INTEGER REFERENCES leagues(id) ON DELETE SET NULL
+                name VARCHAR(100) NOT NULL,
+                api_id VARCHAR(100) NOT NULL,
+                site_name varchar(100),
+                country_id INTEGER REFERENCES country(id) ON DELETE SET NULL
             );
         """)
 
@@ -60,9 +69,25 @@ def create_tables():
                 id SERIAL PRIMARY KEY,
                 user_identifier VARCHAR(100) NOT NULL,
                 team_id INTEGER REFERENCES teams(id) ON DELETE CASCADE,
+            );
+        """)
+
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS fixtures (
+                id SERIAL PRIMARY KEY,
+                home_team VARCHAR(100) NOT NULL,
+                away_team VARCHAR(100) NOT NULL,
+                name_league VARCHAR(100) NOT NULL,
+                game_date datatime NOT NULL,
+                status VARCHAR(30) NOT NULL,
+                precessed BOOLEAN NOT NULL,
+
+                team_id INTEGER REFERENCES teams(id) ON DELETE CASCADE,
                 league_id INTEGER REFERENCES leagues(id) ON DELETE CASCADE
             );
         """)
+
 
         conn.commit()
         print("✨ Estrutura do banco de dados criada com sucesso dentro do Docker!")
