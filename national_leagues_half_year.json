@@ -2,7 +2,7 @@
   {"league": "premier-league", "country": "england", "code" : "ENGLAND 1", "name_api" : "Premier League", "id_api" : "39"},
   {"league": "championship", "country": "england", "code" : "ENGLAND 2", "name_api" : "Championship", "id_api" : "40"},
   {"league": "ligue-1", "country": "france", "code" : "FRANCE 1", "name_api" : " Ligue 1", "id_api" : "61"},
-  {"league": "serie-a", "country": "italy", "code" : "ITALY 1", "name_api" : "Serie A", "id_api" : "705"},
+  {"league": "serie-a", "country": "italy", "code" : "ITALY 1", "name_api" : "Serie A", "id_api" : "135"},
   {"league": "liga-portugal", "country": "portugal", "code" : "PORTUGAL 1", "name_api" : "Primeira Liga", "id_api" : "94"},
   {"league": "bundesliga", "country": "germany", "code" : "GERMANY 1", "name_api" : "Bundesliga", "id_api" : "78"},
   {"league": "laliga", "country": "spain", "code" : "SPAIN 1", "name_api" : "La Liga", "id_api" : "140"}

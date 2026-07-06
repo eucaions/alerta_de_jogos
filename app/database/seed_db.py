@@ -3,6 +3,7 @@ import requests
 import psycopg2
 import json
 import re
+import time
 
 from dotenv import load_dotenv
 from pathlib import Path
@@ -91,6 +92,11 @@ def cadastrar_liga_e_times(api_liga_id, nome_liga, pais_liga):
 
 
 
+
+
+
+
+
 def oficialSeed(ligas = []):
     conn = conectar_banco()
     FOOTBALL_API_KEY = os.getenv("FOOTBALL_API_KEY")
@@ -158,7 +164,7 @@ def oficialSeed(ligas = []):
                 print(f"   ↳ Tentando salvar: ID {api_team_id} - {nome_time_api}")
                 
                 cursor.execute("""
-                    INSERT INTO teams (api_id, name, country_id, site_name)
+                    INSERT INTO team (api_id, api_name, country_id, site_name)
                     VALUES (%s, %s, %s, %s)
                     ON CONFLICT (api_id) DO NOTHING;
                 """, (api_team_id, nome_time_api, country_id, None))
@@ -296,5 +302,28 @@ def seeding_teams_and_leagues():
 if __name__ == "__main__":
     """ cadastrar_liga_e_times(api_liga_id=72, nome_liga="Brasileirão Série B", pais_liga="Brazil") """
     """ futPythonSeederTeams("brazil", "serie-b", "2026") """
-    seeding_teams_and_leagues()
+
+    # limite de 5, pois o site nao permite mais
+
+    grupos_de_ligas = [
+        [2, 3, 11, 13, 39],
+        [40, 61, 71, 72, 78],
+        [94, 135 ,140, 848, 866]
+    ]
+    INTERVALO_SEGUNDOS = 60
+
+    for indice, ligas in enumerate(grupos_de_ligas):
+        print(f"🚀 Iniciando o lote {indice + 1}/{len(grupos_de_ligas)}: Ligas {ligas}")
+        
+        # Executa a função que criamos para o lote atual
+        oficialSeed(ligas)
+        
+        # Se ainda não for o último lote, aplica o timer antes do próximo disparo
+        if indice < len(grupos_de_ligas) - 1:
+            print(f"⏳ Lote {indice + 1} finalizado. Aguardando {INTERVALO_SEGUNDOS} segundos para o próximo lote...")
+            time.sleep(INTERVALO_SEGUNDOS)
+
+    print("✨ Todos os lotes de seed foram executados com sucesso!")
+
+
     pass

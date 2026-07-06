@@ -32,34 +32,38 @@ def create_tables():
         conn = obter_conexao()
         cursor = conn.cursor()
 
-        cursor.execute("DROP TABLE IF EXISTS user_favorite CASCADE;")
+
+        cursor.execute("DROP TABLE IF EXISTS user_favorites CASCADE;")
+        cursor.execute("DROP TABLE IF EXISTS fixture CASCADE;")
         cursor.execute("DROP TABLE IF EXISTS team CASCADE;")
         cursor.execute("DROP TABLE IF EXISTS league CASCADE;")
-        cursor.execute("DROP TABLE IF EXISTS fixture CASCADE;")
+        cursor.execute("DROP TABLE IF EXISTS leagues CASCADE;")
+        cursor.execute("DROP TABLE IF EXISTS country CASCADE;")
 
-
+        
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS country (
                 id SERIAL PRIMARY KEY,
-                name VARCHAR(100) NOT NULL,
+                name VARCHAR(100) NOT NULL UNIQUE
             );
         """)
-
 
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS league (
                 id SERIAL PRIMARY KEY,
-                name VARCHAR(100) NOT NULL,
+                name VARCHAR(100),
+                api_id INTEGER NOT NULL UNIQUE,  -- Adicionado UNIQUE para o seed de ligas
+                api_name VARCHAR(100) NOT NULL,
                 country_id INTEGER REFERENCES country(id) ON DELETE SET NULL
             );
         """)
 
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS teams (
+            CREATE TABLE IF NOT EXISTS team (
                 id SERIAL PRIMARY KEY,
-                name VARCHAR(100) NOT NULL,
-                api_id VARCHAR(100) NOT NULL,
-                site_name varchar(100),
+                api_id INTEGER NOT NULL UNIQUE,
+                api_name VARCHAR(100) NOT NULL,
+                site_name VARCHAR(100),
                 country_id INTEGER REFERENCES country(id) ON DELETE SET NULL
             );
         """)
@@ -68,23 +72,23 @@ def create_tables():
             CREATE TABLE IF NOT EXISTS user_favorites (
                 id SERIAL PRIMARY KEY,
                 user_identifier VARCHAR(100) NOT NULL,
-                team_id INTEGER REFERENCES teams(id) ON DELETE CASCADE,
+                team_id INTEGER REFERENCES team(id) ON DELETE CASCADE
+                -- CORREÇÃO 2: Removida a vírgula que sobrava aqui
             );
         """)
 
-
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS fixtures (
+            CREATE TABLE IF NOT EXISTS fixture (
                 id SERIAL PRIMARY KEY,
                 home_team VARCHAR(100) NOT NULL,
                 away_team VARCHAR(100) NOT NULL,
                 name_league VARCHAR(100) NOT NULL,
-                game_date datatime NOT NULL,
+                game_date TIMESTAMP NOT NULL,    
                 status VARCHAR(30) NOT NULL,
-                precessed BOOLEAN NOT NULL,
+                processed BOOLEAN NOT NULL DEFAULT FALSE, 
 
-                team_id INTEGER REFERENCES teams(id) ON DELETE CASCADE,
-                league_id INTEGER REFERENCES leagues(id) ON DELETE CASCADE
+                team_id INTEGER REFERENCES team(id) ON DELETE CASCADE,
+                league_id INTEGER REFERENCES league(id) ON DELETE CASCADE
             );
         """)
 
