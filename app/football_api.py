@@ -165,3 +165,33 @@ def buscar_jogos_do_dia():
     except Exception as e:
         print(f"❌ Erro ao buscar jogos e processar transmissão: {e}")
         return []
+    
+
+def schedule_fixtures():
+    url = "https://v3.football.api-sports.io/fixtures"
+    headers = {'x-apisports-key': FOOTBALL_API_KEY}
+    params = {
+        "date": datetime.now().strftime("%Y-%m-%d"),
+        "timezone": "America/Sao_Paulo"
+    }
+
+    try:
+        response = requests.get(url, headers=headers, params=params)
+        data = response.json()
+        for item in data.get("response", []):
+            
+            id_casa_api = item["teams"]["home"]["id"]
+            id_fora_api = item["teams"]["away"]["id"]
+            
+            name_casa_api = item["teams"]["home"]["name"]
+            name_fora_api = item["teams"]["away"]["name"]
+
+            id_league = item["league"]["id"]
+            name_league = item["league"]["name"]
+            
+            horario_previsto = datetime.fromisoformat(item["fixture"]["date"]).strftime("%H:%M")
+
+
+    except Exception as e:
+            print(f"❌ Erro no Scraping: {e}")
+            return "📺 Erro ao processar guia"

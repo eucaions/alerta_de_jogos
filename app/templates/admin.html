@@ -48,12 +48,12 @@
                     const linha = `
                         <tr class="hover:bg-gray-700/30 transition-colors">
                             <td class="px-6 py-4 font-medium text-gray-200">
-                                ${time.name.toLowerCase().split(' ').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ')}
+                                ${time.api_name.toLowerCase().split(' ').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ')}
                             </td>
                             <td class="px-6 py-4" colspan="2">
                                 <form action="/api/times/atualizar" method="POST" class="flex items-center justify-between w-full">
                                     <input type="hidden" name="time_id" value="${time.id}">
-                                    <input type="text" name="common_name" value="${time.common_name}" 
+                                    <input type="text" name="common_name" value="${time.site_name}" 
                                         placeholder="Ex: bragantino" 
                                         class="bg-gray-900 border border-gray-700 rounded-lg px-3 py-1.5 text-sm w-64 focus:outline-none focus:border-blue-500 text-gray-100">
                                     

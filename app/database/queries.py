@@ -53,7 +53,7 @@ def atualizar_common_name_time(time_id: int, novo_common_name: str):
     cursor = conn.cursor()
     
     valor_nome = novo_common_name.strip() if novo_common_name.strip() else None
-    cursor.execute("UPDATE teams SET common_name = %s WHERE id = %s;", (valor_nome, time_id))
+    cursor.execute("UPDATE team SET site_name = %s WHERE id = %s;", (valor_nome, time_id))
 
     conn.commit()
     cursor.close()
