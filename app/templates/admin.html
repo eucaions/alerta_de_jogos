@@ -48,7 +48,7 @@
                     const linha = `
                         <tr class="hover:bg-gray-700/30 transition-colors">
                             <td class="px-6 py-4 font-medium text-gray-200">
-                                ${time.api_name}
+                                ${time.name.toLowerCase().split(' ').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ')}
                             </td>
                             <td class="px-6 py-4" colspan="2">
                                 <form action="/api/times/atualizar" method="POST" class="flex items-center justify-between w-full">

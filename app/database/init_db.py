@@ -32,30 +32,39 @@ def create_tables():
         conn = obter_conexao()
         cursor = conn.cursor()
 
+
         cursor.execute("DROP TABLE IF EXISTS user_favorites CASCADE;")
-        cursor.execute("DROP TABLE IF EXISTS teams CASCADE;")
+        cursor.execute("DROP TABLE IF EXISTS fixture CASCADE;")
+        cursor.execute("DROP TABLE IF EXISTS team CASCADE;")
+        cursor.execute("DROP TABLE IF EXISTS league CASCADE;")
         cursor.execute("DROP TABLE IF EXISTS leagues CASCADE;")
+        cursor.execute("DROP TABLE IF EXISTS country CASCADE;")
 
-
-
+        
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS leagues (
+            CREATE TABLE IF NOT EXISTS country (
                 id SERIAL PRIMARY KEY,
-                api_fixture_id INTEGER UNIQUE NOT NULL,
-                name VARCHAR(100) NOT NULL,
-                country VARCHAR(50)
+                name VARCHAR(100) NOT NULL UNIQUE
             );
         """)
 
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS teams (
+            CREATE TABLE IF NOT EXISTS league (
                 id SERIAL PRIMARY KEY,
-                api_fixture_id INTEGER UNIQUE NOT NULL,
-                api_database_id INTEGER UNIQUE,
-                common_name VARCHAR(100),
-                fullname_api_fixture VARCHAR(100) NOT NULL,
-                fullname_api_database VARCHAR(100),
-                league_id INTEGER REFERENCES leagues(id) ON DELETE SET NULL
+                name VARCHAR(100),
+                api_id INTEGER NOT NULL UNIQUE,  -- Adicionado UNIQUE para o seed de ligas
+                api_name VARCHAR(100) NOT NULL,
+                country_id INTEGER REFERENCES country(id) ON DELETE SET NULL
+            );
+        """)
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS team (
+                id SERIAL PRIMARY KEY,
+                api_id INTEGER NOT NULL UNIQUE,
+                api_name VARCHAR(100) NOT NULL,
+                site_name VARCHAR(100),
+                country_id INTEGER REFERENCES country(id) ON DELETE SET NULL
             );
         """)
 
@@ -63,10 +72,26 @@ def create_tables():
             CREATE TABLE IF NOT EXISTS user_favorites (
                 id SERIAL PRIMARY KEY,
                 user_identifier VARCHAR(100) NOT NULL,
-                team_id INTEGER REFERENCES teams(id) ON DELETE CASCADE,
-                league_id INTEGER REFERENCES leagues(id) ON DELETE CASCADE
+                team_id INTEGER REFERENCES team(id) ON DELETE CASCADE
+                -- CORREÇÃO 2: Removida a vírgula que sobrava aqui
             );
         """)
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS fixture (
+                id SERIAL PRIMARY KEY,
+                home_team VARCHAR(100) NOT NULL,
+                away_team VARCHAR(100) NOT NULL,
+                name_league VARCHAR(100) NOT NULL,
+                game_date TIMESTAMP NOT NULL,    
+                status VARCHAR(30) NOT NULL,
+                processed BOOLEAN NOT NULL DEFAULT FALSE, 
+
+                team_id INTEGER REFERENCES team(id) ON DELETE CASCADE,
+                league_id INTEGER REFERENCES league(id) ON DELETE CASCADE
+            );
+        """)
+
 
         conn.commit()
         print("✨ Estrutura do banco de dados criada com sucesso dentro do Docker!")
