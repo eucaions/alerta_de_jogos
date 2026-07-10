@@ -115,7 +115,7 @@ def oficialSeed(ligas = []):
         "x-rapidapi-key": FOOTBALL_API_KEY, 
     } 
     try:
-        query_country = "INSERT INTO country (name) VALUES (%s) ON CONFLICT DO NOTHING;"
+        query_country = "INSERT INTO countries (name) VALUES (%s) ON CONFLICT DO NOTHING;"
         execute_batch(cursor,query_country,countries)
         conn.commit()
 
@@ -133,17 +133,29 @@ def oficialSeed(ligas = []):
             nome_liga = dados_liga['league']['name']
             nome_pais = dados_liga['country']['name']
 
-            query_busca = "SELECT c.id FROM country AS c WHERE c.name = (%s);"
+            query_busca = "SELECT c.id FROM countries AS c WHERE c.name = (%s);"
             cursor.execute(query_busca, (nome_pais,))
             result = cursor.fetchone()
 
             if not result:
-                continue
-
-            country_id = result[0]
+                # CORREÇÃO 1 & 2: Passamos 'nome_pais' e usamos RETURNING id para capturar o ID gerado na hora
+                query_new_country = "INSERT INTO countries (name) VALUES (%s) ON CONFLICT (name) DO NOTHING RETURNING id;"
+                cursor.execute(query_new_country, (nome_pais,))
+                
+                insert_result = cursor.fetchone()
+                
+                if insert_result:
+                    country_id = insert_result[0]
+                else:
+                    cursor.execute(query_busca, (nome_pais,))
+                    country_id = cursor.fetchone()[0]
+                    
+                conn.commit()
+            else:
+                country_id = result[0]
 
             query_insert = """
-                INSERT INTO league (name, api_id, api_name, country_id) 
+                INSERT INTO leagues (name, api_id, api_name, country_id) 
                 VALUES (%s, %s, %s, %s) 
                 ON CONFLICT (api_id) DO NOTHING;
             """
@@ -164,7 +176,7 @@ def oficialSeed(ligas = []):
                 print(f"   ↳ Tentando salvar: ID {api_team_id} - {nome_time_api}")
                 
                 cursor.execute("""
-                    INSERT INTO team (api_id, api_name, country_id, site_name)
+                    INSERT INTO teams (api_id, api_name, country_id, site_name)
                     VALUES (%s, %s, %s, %s)
                     ON CONFLICT (api_id) DO NOTHING;
                 """, (api_team_id, nome_time_api, country_id, None))
