@@ -99,26 +99,12 @@ def cadastrar_liga_e_times(api_liga_id, nome_liga, pais_liga):
 
 def oficialSeed(ligas = []):
     conn = conectar_banco()
-    FOOTBALL_API_KEY = os.getenv("FOOTBALL_API_KEY")
-
     cursor = conn.cursor()
-
-    with open("countries.json", "r") as f:
-        countries_json = json.load(f)
-
-    countries = []
-    for i in countries_json:
-        vet = [i['name']]
-        countries.append(vet)
-
+    FOOTBALL_API_KEY = os.getenv("FOOTBALL_API_KEY")
     headers = {
         "x-rapidapi-key": FOOTBALL_API_KEY, 
-    } 
+    }
     try:
-        query_country = "INSERT INTO countries (name) VALUES (%s) ON CONFLICT DO NOTHING;"
-        execute_batch(cursor,query_country,countries)
-        conn.commit()
-
 
         for id in ligas:
             url_api_league = f"https://v3.football.api-sports.io/leagues?id={id}"
@@ -138,7 +124,6 @@ def oficialSeed(ligas = []):
             result = cursor.fetchone()
 
             if not result:
-                # CORREÇÃO 1 & 2: Passamos 'nome_pais' e usamos RETURNING id para capturar o ID gerado na hora
                 query_new_country = "INSERT INTO countries (name) VALUES (%s) ON CONFLICT (name) DO NOTHING RETURNING id;"
                 cursor.execute(query_new_country, (nome_pais,))
                 
@@ -172,14 +157,31 @@ def oficialSeed(ligas = []):
                     
                 api_team_id = team_data.get('id')
                 nome_time_api = team_data.get('name')
+                country_name_team = team_data.get('country')
                 
+                cursor.execute(query_busca, (country_name_team,))
+                result2 = cursor.fetchone()
+
+                if not result2:
+                    query_new_country = "INSERT INTO countries (name) VALUES (%s) ON CONFLICT (name) DO NOTHING RETURNING id;"
+                    cursor.execute(query_new_country, (country_name_team,))
+                    
+                    insert_result = cursor.fetchone()
+                    if insert_result:
+                        team_country_id = insert_result[0]
+                    else:
+                        cursor.execute(query_busca, (country_name_team,))
+                        team_country_id = cursor.fetchone()[0]
+                else:
+                    team_country_id = result2[0]
+
                 print(f"   ↳ Tentando salvar: ID {api_team_id} - {nome_time_api}")
                 
                 cursor.execute("""
                     INSERT INTO teams (api_id, api_name, country_id, site_name)
                     VALUES (%s, %s, %s, %s)
                     ON CONFLICT (api_id) DO NOTHING;
-                """, (api_team_id, nome_time_api, country_id, None))
+                """, (api_team_id, nome_time_api, team_country_id, None))
                                 
             conn.commit()
 
