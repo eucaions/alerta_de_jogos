@@ -301,34 +301,145 @@ def buscar_transmissao_site(time_casa, time_fora, horario_previsto):
 
 def msg_por_fixture():
     conn = obter_conexao()
-    # Usamos RealDictCursor para acessar os campos pelo nome da coluna/alias
     cursor = conn.cursor()
 
-    # CORREÇÃO 1: Ajustado t2.id_api no segundo JOIN
     query = """
         SELECT 
-            t1.site_name AS t1_site_name, 
-            t1.api_name AS t1_api_name, 
-            t2.site_name AS t2_site_name, 
-            t2.api_name AS t2_api_name, 
-            f.game_time
-        FROM fixtures f 
-        JOIN teams t1 ON f.id_home_api = t1.api_id 
-        JOIN teams t2 ON f.id_away_api = t2.api_id;
+            f.id AS fixture_id,
+            f.home_team AS home_api_name,
+            f.away_team AS away_api_name,
+            f.name_league AS api_league_name,
+            f.game_date,
+            TO_CHAR(f.game_date, 'HH24:MI') AS game_time,
+            t1.api_id AS home_api_id,
+            t1.site_name AS home_site_name,
+            t2.api_id AS away_api_id,
+            t2.site_name AS away_site_name
+        FROM fixtures f
+        JOIN teams t1 ON f.team_id = t1.id -- ou f.id_home_api = t1.api_id
+        JOIN teams t2 ON f.team_id_away = t2.id -- ajuste conforme suas FKS de fixtures
+        WHERE f.game_date::date = CURRENT_DATE;
     """
-    cursor.execute(query)
-    result = cursor.fetchall()
+    
+    try:
+        cursor.execute(query)
+        jogos_do_dia = cursor.fetchall()
 
-    for i in result:
-        time_casa = i[0] or i[1]
-        time_fora = i[2] or i[3]
-        horario = i[4]
+        if not jogos_do_dia:
+            print("ℹ️ Nenhum jogo encontrado na tabela fixtures para o dia de hoje.")
+            return {}
 
-        dados = buscar_transmissao_site(time_casa, time_fora, horario)
+        mensagens_por_time = {}
+        nao_encontrados_log = []
+
+        for jogo in jogos_do_dia:
+            time_casa = jogo[7] or jogo[1]
+            time_fora = jogo[9] or jogo[2]
+            horario = jogo[5]
+
+            # 2. Executa o Scraping
+            dados_scrape = buscar_transmissao_site(time_casa, time_fora, horario)
+
+            if dados_scrape:
+                transmissao = dados_scrape['canais']
+                liga = dados_scrape['liga_site'] or jogo[3]
+
+                # Atualiza site_name do time da casa se ainda for NULL
+                if dados_scrape['time_casa_site'] and not jogo[7]:
+                    cursor.execute(
+                        "UPDATE teams SET site_name = %s WHERE api_id = %s;",
+                        (dados_scrape['time_casa_site'], jogo[6])
+                    )
+
+                # Atualiza site_name do time de fora se ainda for NULL
+                if dados_scrape['time_fora_site'] and not jogo[9]:
+                    cursor.execute(
+                        "UPDATE teams SET site_name = %s WHERE api_id = %s;",
+                        (dados_scrape['time_fora_site'], jogo[8])
+                    )
+
+            else:
+                # --- PASSO 2.3: NÃO ENCONTRADO NO SITE ---
+                transmissao = "📺 Transmissão não informada no guia"
+                liga = jogo[3]
+
+                # Guarda no log de admin para checagem posterior no painel
+                nao_encontrados_log.append({
+                    "fixture_id": jogo[0],
+                    "jogo": f"{time_casa} x {time_fora}",
+                    "horario": horario
+                })
+
+            # 3. Monta a mensagem individual formatada
+            msg_formatada = (
+                f"🏆 {liga}\n"
+                f"🏟 {time_casa} x {time_fora}\n"
+                f"🕒 Horário: {horario}\n"
+                f"📺 {transmissao}\n"
+                f"----------------------------"
+            )
+
+            home_id = jogo[6]
+            away_id = jogo[8]
+
+            mensagens_por_time[home_id] = msg_formatada
+            mensagens_por_time[away_id] = msg_formatada
+
+        if nao_encontrados_log:
+            registrar_log_admin(cursor, nao_encontrados_log)
+
+        conn.commit()
+        print(f"✅ Mapeamento concluído! {len(mensagens_por_time)} chaves de times geradas no JSON.")
+        
+        return mensagens_por_time
+
+    except Exception as e:
+        conn.rollback()
+        print(f"❌ Erro ao processar mensagens das fixtures: {e}")
+        return {}
+    finally:
+        cursor.close()
+        conn.close()
 
 
-    cursor.close()
-    conn.close()
+def registrar_log_admin(cursor, logs):
+    """
+    Insere os jogos não pareados pelo scraper na tabela de auditoria/admin.
+    """
+    query = """
+        INSERT INTO admin_logs (tipo, detalhes, criado_em)
+        VALUES ('SCRAPER_MISS', %s, NOW());
+    """
+    cursor.execute(query, (json.dumps(logs),))
+
+def disparar_agenda_matinal_usuarios(mensagens_por_time):
+    usuarios = obter_todos_usuarios_com_favoritos() # Busca users e seus team_api_ids
+
+    for usuario in usuarios:
+        chat_id = usuario['telegram_chat_id']
+        times_favoritos = usuario['lista_team_api_ids'] # Ex: [541, 529, 120]
+
+        conjunto_mensagens = set()
+
+        for team_id in times_favoritos:
+            if team_id in mensagens_por_time:
+                conjunto_mensagens.add(mensagens_por_time[team_id])
+
+        if conjunto_mensagens:
+            texto_final = "⚽ <b>SUA AGENDA DE JOGOS DE HOJE</b> ⚽\n\n"
+            texto_final += "\n".join(conjunto_mensagens)
+
+            enviar_alerta_telegram(chat_id, texto_final)
+
+
+
+
+
+
+
+
+
+
 
 def buscar_jogos_do_dia():
     """Busca jogos na API-Football e adiciona a transmissão via Scraping com Fallback do Banco"""
