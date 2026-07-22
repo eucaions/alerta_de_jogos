@@ -55,7 +55,7 @@ def create_tables():
             CREATE TABLE IF NOT EXISTS leagues (
                 id SERIAL PRIMARY KEY,
                 site_name VARCHAR(100),
-                api_id INTEGER NOT NULL UNIQUE,
+                id_api INTEGER NOT NULL UNIQUE,
                 api_name VARCHAR(100) NOT NULL,
                 country_id INTEGER REFERENCES countries(id) ON DELETE SET NULL
             );
@@ -64,7 +64,7 @@ def create_tables():
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS teams (
                 id SERIAL PRIMARY KEY,
-                api_id INTEGER NOT NULL UNIQUE,
+                id_api INTEGER NOT NULL UNIQUE,
                 api_name VARCHAR(100) NOT NULL,
                 site_name VARCHAR(100),
                 country_id INTEGER REFERENCES countries(id) ON DELETE SET NULL

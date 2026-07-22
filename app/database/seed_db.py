@@ -33,9 +33,9 @@ def cadastrar_liga_e_times(api_liga_id, nome_liga, pais_liga):
     try:
         # 1. Insere a Liga no Banco
         cursor.execute("""
-            INSERT INTO leagues (api_id, name, country)
+            INSERT INTO leagues (id_api, name, country)
             VALUES (%s, %s, %s)
-            ON CONFLICT (api_id) DO UPDATE SET name = EXCLUDED.name
+            ON CONFLICT (id_api) DO UPDATE SET name = EXCLUDED.name
             RETURNING id;
         """, (api_liga_id, nome_liga, pais_liga))
         
@@ -140,9 +140,9 @@ def oficialSeed(ligas = []):
                 country_id = result[0]
 
             query_insert = """
-                INSERT INTO leagues (name, api_id, api_name, country_id) 
+                INSERT INTO leagues (name, id_api, api_name, country_id) 
                 VALUES (%s, %s, %s, %s) 
-                ON CONFLICT (api_id) DO NOTHING;
+                ON CONFLICT (id_api) DO NOTHING;
             """
             cursor.execute(query_insert, (None, id, nome_liga, country_id))
 
@@ -178,9 +178,9 @@ def oficialSeed(ligas = []):
                 print(f"   ↳ Tentando salvar: ID {api_team_id} - {nome_time_api}")
                 
                 cursor.execute("""
-                    INSERT INTO teams (api_id, api_name, country_id, site_name)
+                    INSERT INTO teams (id_api, api_name, country_id, site_name)
                     VALUES (%s, %s, %s, %s)
-                    ON CONFLICT (api_id) DO NOTHING;
+                    ON CONFLICT (id_api) DO NOTHING;
                 """, (api_team_id, nome_time_api, team_country_id, None))
                                 
             conn.commit()

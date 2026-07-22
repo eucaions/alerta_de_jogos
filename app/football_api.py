@@ -299,9 +299,36 @@ def buscar_transmissao_site(time_casa, time_fora, horario_previsto):
         print(f"❌ Erro no Scraping: {e}")
         return None
 
+def msg_por_fixture():
+    conn = obter_conexao()
+    # Usamos RealDictCursor para acessar os campos pelo nome da coluna/alias
+    cursor = conn.cursor()
+
+    # CORREÇÃO 1: Ajustado t2.id_api no segundo JOIN
+    query = """
+        SELECT 
+            t1.site_name AS t1_site_name, 
+            t1.api_name AS t1_api_name, 
+            t2.site_name AS t2_site_name, 
+            t2.api_name AS t2_api_name, 
+            f.game_time
+        FROM fixtures f 
+        JOIN teams t1 ON f.id_home_api = t1.api_id 
+        JOIN teams t2 ON f.id_away_api = t2.api_id;
+    """
+    cursor.execute(query)
+    result = cursor.fetchall()
+
+    for i in result:
+        time_casa = i[0] or i[1]
+        time_fora = i[2] or i[3]
+        horario = i[4]
+
+        dados = buscar_transmissao_site(time_casa, time_fora, horario)
 
 
-
+    cursor.close()
+    conn.close()
 
 def buscar_jogos_do_dia():
     """Busca jogos na API-Football e adiciona a transmissão via Scraping com Fallback do Banco"""
