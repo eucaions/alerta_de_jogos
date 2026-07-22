@@ -8,6 +8,7 @@ from app.database.queries import obter_termo_busca_time
 from app.database.init_db import obter_conexao
 from thefuzz import fuzz
 import re
+from app.telegram_bot import enviar_mensagem
 
 load_dotenv()
 
@@ -412,12 +413,44 @@ def registrar_log_admin(cursor, logs):
     """
     cursor.execute(query, (json.dumps(logs),))
 
+
+def obter_todos_usuarios_com_favoritos():
+
+    conn = obter_conexao()
+    cursor = conn.cursor()
+
+    query = """
+        SELECT 
+            u.id AS user_id,
+            u.telegram_chat_id,
+            ARRAY_AGG(t.api_id) AS lista_team_api_ids
+        FROM users u
+        JOIN user_favorites uf ON u.id = uf.user_id
+        JOIN teams t ON uf.team_id = t.id
+        GROUP BY u.id, u.telegram_chat_id;
+    """
+
+    try:
+        cursor.execute(query)
+        usuarios_com_favoritos = cursor.fetchall()
+
+        return usuarios_com_favoritos
+
+    except Exception as e:
+        print(f"❌ Erro ao buscar favoritos dos usuários: {e}")
+        return []
+        
+    finally:
+        cursor.close()
+        conn.close()
+
+
 def disparar_agenda_matinal_usuarios(mensagens_por_time):
-    usuarios = obter_todos_usuarios_com_favoritos() # Busca users e seus team_api_ids
+    usuarios = obter_todos_usuarios_com_favoritos()
 
     for usuario in usuarios:
-        chat_id = usuario['telegram_chat_id']
-        times_favoritos = usuario['lista_team_api_ids'] # Ex: [541, 529, 120]
+        chat_id = usuario[1]
+        times_favoritos = usuario[2]
 
         conjunto_mensagens = set()
 
@@ -429,7 +462,7 @@ def disparar_agenda_matinal_usuarios(mensagens_por_time):
             texto_final = "⚽ <b>SUA AGENDA DE JOGOS DE HOJE</b> ⚽\n\n"
             texto_final += "\n".join(conjunto_mensagens)
 
-            enviar_alerta_telegram(chat_id, texto_final)
+            enviar_mensagem(texto_final, chat_id)
 
 
 
