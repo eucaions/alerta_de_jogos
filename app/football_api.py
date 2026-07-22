@@ -182,9 +182,10 @@ def buscar_jogos_do_dia():
 
 def schedule_fixtures():
     url = "https://v3.football.api-sports.io/fixtures"
+    day = datetime.now()
     headers = {'x-apisports-key': FOOTBALL_API_KEY}
     params = {
-        "date": datetime.now().strftime("%Y-%m-%d"),
+        "date": day.strftime("%Y-%m-%d"),
         "timezone": "America/Sao_Paulo"
     }
 
@@ -197,17 +198,16 @@ def schedule_fixtures():
             id_away_api = item["teams"]["away"]["id"]
 
             id_league = item["league"]["id"]
-            name_league = item["league"]["name"]
             
             horario = datetime.fromisoformat(item["fixture"]["date"]).strftime("%H:%M")
 
             conn = obter_conexao()
             cursor = conn.cursor()
 
-            query = "INSERT INTO fixtures(id_home_api,id_away_api,name_league,game_time,status) VALUES (%s,%s,%s,%s,%s);"
-            cursor.execute(query,(id_home_api,id_away_api,id_league,horario,None,))
+            query = "INSERT INTO fixtures(id_home_api,id_away_api,id_league_api,game_date,game_time,status) VALUES (%s,%s,%s,%s,%s);"
+            cursor.execute(query,(id_home_api,id_away_api,id_league,day,horario,None,))
         conn.commit()
-        print(f"Tabela Fixtures preenchida para {datetime.now().strftime("%Y-%m-%d")}")
+        print(f"Tabela Fixtures preenchida para {day.strftime("%Y-%m-%d")}")
 
     except Exception as e:
             print(f"❌ Erro no Scraping: {e}")
@@ -221,7 +221,7 @@ def extrair_dados_do_bloco(texto_bloco):
     """
     Separa e extrai a liga, os times e a transmissão a partir das linhas do bloco do jogo.
     """
-    
+
     linhas = [l.strip() for l in texto_bloco.split('\n') if l.strip()]
     
     liga_site = None
