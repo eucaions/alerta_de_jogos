@@ -1,25 +1,23 @@
-from datetime import datetime
 import json
-import os
-import psycopg2
 from dotenv import load_dotenv
-import requests
 from app.database.init_db import obter_conexao
 
 load_dotenv()
 
-def obter_termo_busca_time(id):
-
+def obter_termo_busca_time(time_id: int):
+    """
+    Retorna o site_name/common_name se existir, caso contrário recorre ao api_name.
+    """
     conn = obter_conexao()
     cursor = conn.cursor()
     
     try:
         query = """
-            SELECT COALESCE(common_name, name) 
+            SELECT COALESCE(site_name, api_name) 
             FROM teams 
             WHERE id = %s;
         """
-        cursor.execute(query, (id,))
+        cursor.execute(query, (time_id,))
         resultado = cursor.fetchone()
         
         return resultado[0] if resultado else None
@@ -31,43 +29,59 @@ def obter_termo_busca_time(id):
         cursor.close()
         conn.close()
 
+
 def listar_todos_os_times():
+    """
+    Lista todos os times ordenados para o painel admin ou seleção do usuário.
+    """
     conn = obter_conexao()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT id, name, common_name FROM teams ORDER BY name ASC;")
-    rows = cursor.fetchall()
+    try:
+        cursor.execute("SELECT id, api_name, site_name FROM teams ORDER BY api_name ASC;")
+        rows = cursor.fetchall()
 
-    times = []
-    for row in rows:
-        times.append({
-            "id": row[0],
-            "name": row[1],
-            "common_name": row[2] or ""
-        })
+        times = []
+        for row in rows:
+            times.append({
+                "id": row[0],
+                "api_name": row[1],
+                "site_name": row[2] or ""
+            })
+        return times
+    except Exception as e:
+        print(f"❌ Erro ao listar times: {e}")
+        return []
+    finally:
+        cursor.close()
+        conn.close()
 
-    cursor.close()
-    conn.close()
-    return times
 
-
-def atualizar_common_name_time(time_id: int, novo_common_name: str):
+def atualizar_site_name_time(time_id: int, novo_site_name: str):
+    """
+    Atualiza o nome personalizado/site_name do time na tabela teams.
+    """
     conn = obter_conexao()
     cursor = conn.cursor()
     
-    valor_nome = novo_common_name.strip() if novo_common_name.strip() else None
-    cursor.execute("UPDATE team SET site_name = %s WHERE id = %s;", (valor_nome, time_id))
+    try:
+        valor_nome = novo_site_name.strip() if novo_site_name and novo_site_name.strip() else None
+        
+        cursor.execute("UPDATE teams SET site_name = %s WHERE id = %s;", (valor_nome, time_id))
+        conn.commit()
+        print(f"✅ site_name do time ID {time_id} atualizado para '{valor_nome}'")
+    except Exception as e:
+        conn.rollback()
+        print(f"❌ Erro ao atualizar site_name do time: {e}")
+    finally:
+        cursor.close()
+        conn.close()
 
-    conn.commit()
-    cursor.close()
-    conn.close()
 
-
-
-
-    
 def obter_todos_usuarios_com_favoritos():
-
+    """
+    Busca os usuários com seus respetivos times favoritos agrupados via ARRAY_AGG.
+    """
     conn = obter_conexao()
     cursor = conn.cursor()
 
@@ -85,27 +99,25 @@ def obter_todos_usuarios_com_favoritos():
     try:
         cursor.execute(query)
         usuarios_com_favoritos = cursor.fetchall()
-
         return usuarios_com_favoritos
-
     except Exception as e:
         print(f"❌ Erro ao buscar favoritos dos usuários: {e}")
         return []
-        
     finally:
         cursor.close()
         conn.close()
 
 
-
-
 def registrar_log_admin(cursor, logs):
     """
     Insere os jogos não pareados pelo scraper na tabela de auditoria/admin.
+    Observação: Essa função recebe o 'cursor' externo para reaproveitar a transação ativa.
     """
-    query = """
-        INSERT INTO admin_logs (tipo, detalhes, criado_em)
-        VALUES ('SCRAPER_MISS', %s, NOW());
-    """
-    cursor.execute(query, (json.dumps(logs),))
-
+    try:
+        query = """
+            INSERT INTO admin_logs (tipo, detalhes, criado_em)
+            VALUES ('SCRAPER_MISS', %s, NOW());
+        """
+        cursor.execute(query, (json.dumps(logs),))
+    except Exception as e:
+        print(f"❌ Erro ao gravar log do admin: {e}")
