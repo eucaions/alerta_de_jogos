@@ -1,6 +1,7 @@
 from apscheduler.schedulers.background import BackgroundScheduler
-from app.telegram_bot import enviar_mensagem
-from app.football_api import buscar_jogos_do_dia
+from app.services.scraper import msg_por_fixture
+from app.telegram_bot import disparar_agenda_matinal_usuarios, enviar_mensagem
+from app.services.football_api import buscar_jogos_do_dia
 from app.message_formatter import formatar_lista_jogos
 
 scheduler = BackgroundScheduler()
@@ -79,12 +80,18 @@ def verificar_e_enviar_alertas_proximos_jogos():
         conn.close()
 
 
-
-
-
-
-
-
+def rotina_matinal_jogos():
+    print("🌅 [08:00] Iniciando rotina matinal de processamento e envio de jogos...")
+    
+    # Passo 1: Processa os jogos, roda o scraper, atualiza os site_names e gera o mapa/JSON
+    mensagens_por_time = msg_por_fixture()
+    
+    # Passo 2: Se houver mensagens geradas, dispara para os usuários cadastrados
+    if mensagens_por_time:
+        disparar_agenda_matinal_usuarios(mensagens_por_time)
+        print("✅ Agenda de jogos enviada aos usuários com sucesso!")
+    else:
+        print("ℹ️ Nenhuma mensagem a ser disparada hoje.")
 
 
 def verificar_jogos():

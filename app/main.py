@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 import logging
 from fastapi.templating import Jinja2Templates
 from app.scheduler import iniciar_scheduler
-from app.football_api import buscar_jogos_do_dia
+from app.services.football_api import buscar_jogos_do_dia
 from fastapi.middleware.cors import CORSMiddleware
 from app.database.queries import listar_todos_os_times, atualizar_common_name_time
 
