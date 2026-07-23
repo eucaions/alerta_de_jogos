@@ -1,15 +1,18 @@
 from apscheduler.schedulers.background import BackgroundScheduler
+from app.database.queries import obter_todos_usuarios_com_favoritos
 from app.services.scraper import msg_por_fixture
 from app.telegram_bot import disparar_agenda_matinal_usuarios, enviar_mensagem
-from app.services.football_api import buscar_jogos_do_dia
+from app.services.football_api import buscar_jogos_do_dia, schedule_fixtures
 from app.message_formatter import formatar_lista_jogos
+from datetime import datetime
+from apscheduler.schedulers.background import BackgroundScheduler
+from app.database import conectar_banco 
+from app.telegram_bot import enviar_alerta_telegram
+
 
 scheduler = BackgroundScheduler()
 
-from datetime import datetime
-from apscheduler.schedulers.background import BackgroundScheduler
-from app.database import conectar_banco # Sua função de conexão
-from app.telegram_bot import enviar_alerta_telegram # Sua função de envio corrigida
+
 
 scheduler = BackgroundScheduler()
 
@@ -83,10 +86,8 @@ def verificar_e_enviar_alertas_proximos_jogos():
 def rotina_matinal_jogos():
     print("🌅 [08:00] Iniciando rotina matinal de processamento e envio de jogos...")
     
-    # Passo 1: Processa os jogos, roda o scraper, atualiza os site_names e gera o mapa/JSON
     mensagens_por_time = msg_por_fixture()
     
-    # Passo 2: Se houver mensagens geradas, dispara para os usuários cadastrados
     if mensagens_por_time:
         disparar_agenda_matinal_usuarios(mensagens_por_time)
         print("✅ Agenda de jogos enviada aos usuários com sucesso!")
@@ -121,3 +122,17 @@ def iniciar_scheduler():
 
     scheduler.start()
     print("✅ Scheduler em execução!")
+
+
+def job_03am_carga_api():
+    schedule_fixtures()
+
+def job_07am_processar_transmissoes():
+    rotina_matinal_jogos()
+    pass
+
+# 🛠️ Tarefa 3 (08:00): Cruza os favoritos dos usuários com o mapa e dispara
+def job_08am_disparar_telegram():
+    usuarios = obter_todos_usuarios_com_favoritos()
+    # Executa o loop do SET por usuário e envia via enviar_alerta_telegram()
+    pass
