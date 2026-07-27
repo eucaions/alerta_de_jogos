@@ -14,10 +14,6 @@ HEADERS = {
 
 
 def schedule_fixtures():
-    """
-    [03:00] Consulta a API-Sports buscando todas as partidas do dia
-    e insere os dados na tabela 'fixtures'.
-    """
     url = "https://v3.football.api-sports.io/fixtures"
     day = datetime.now()
     
@@ -28,7 +24,7 @@ def schedule_fixtures():
 
     conn = None
     cursor = None
-
+    jogos_inseridos = 0
     try:
         response = requests.get(url, headers=HEADERS, params=params, timeout=15)
         
@@ -40,7 +36,7 @@ def schedule_fixtures():
         fixtures = data.get("response", [])
 
         if not fixtures:
-            print(f"ℹ️ Nenhuma fixture encontrada na API para a data {day.strftime('%Y-%m-%d')}.")
+            print(f"ℹ️ Nenhuma fixture encontrada na API para {day.strftime('%Y-%m-%d')}.")
             return
 
         conn = obter_conexao()
@@ -51,16 +47,12 @@ def schedule_fixtures():
             VALUES (%s, %s, %s, %s, %s, %s);
         """
 
-        jogos_inseridos = 0
         for item in fixtures:
-            id_home_api = item["teams"]["home"]["id"]
-            id_away_api = item["teams"]["away"]["id"]
-            id_league = item["league"]["id"]
-            
-            # Extrai o horário a partir do ISO date retornado
-            game_date_iso = item["fixture"]["date"]
-            horario = datetime.fromisoformat(game_date_iso).strftime("%H:%M")
-            status_jogo = item["fixture"]["status"]["short"] # Ex: 'NS' (Not Started)
+            id_home_api = str(item["teams"]["home"]["id"])
+            id_away_api = str(item["teams"]["away"]["id"])
+            id_league = str(item["league"]["id"])
+            horario = datetime.fromisoformat(item["fixture"]["date"]).strftime("%H:%M")
+            status_jogo = item["fixture"]["status"]["short"] or "NS"
 
             cursor.execute(query, (
                 id_home_api,
@@ -72,7 +64,6 @@ def schedule_fixtures():
             ))
             jogos_inseridos += 1
 
-        # Confirma todas as inserções de uma só vez
         conn.commit()
         print(f"✅ Tabela Fixtures preenchida com {jogos_inseridos} jogos para {day.strftime('%Y-%m-%d')}.")
 

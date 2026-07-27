@@ -6,32 +6,43 @@ from app.database.init_db import obter_conexao
 from app.database.queries import registrar_log_admin
 
 
-def extrair_dados_do_bloco(texto_bloco):
+def extrair_dados_do_bloco(p_tag):
     """
-    Separa e extrai a liga, os times e a transmissão a partir das linhas do bloco do jogo.
+    Extrai a liga, os times e os canais de transmissão
+    diretamente do objeto Tag BeautifulSoup do parágrafo <p>.
     """
-    linhas = [l.strip() for l in texto_bloco.split('\n') if l.strip()]
-    
+    # Se recebeu o texto cru em vez do objeto Tag, converte
+    if isinstance(p_tag, str):
+        p_tag = BeautifulSoup(p_tag, 'html.parser')
+
+    # Pega todos os fragmentos de texto limpos do parágrafo
+    textos = [t.strip() for t in p_tag.stripped_strings if t.strip()]
+
     liga_site = None
     time_casa_site = None
     time_fora_site = None
     canais = "Transmissão não informada"
 
-    for linha in linhas:
-        # 1. Extrai a Liga (linha contendo horário ou o emoji 🕒)
-        if '🕒' in linha or re.search(r'\b\d{2}:\d{2}\b', linha):
-            liga_site = re.sub(r'🕒|\b\d{2}:\d{2}\b', '', linha).strip()
+    # Itera sobre os fragmentos de texto do <p>
+    for i, texto in enumerate(textos):
+        # 1. Identifica a Liga (contém horário, ex: "18:30 Campeonato Brasileiro Série A")
+        if re.search(r'\b\d{2}:\d{2}\b', texto):
+            liga_site = re.sub(r'\b\d{2}:\d{2}\b', '', texto).strip()
 
-        # 2. Extrai os Times (linha contendo ' x ' ou ' X ')
-        elif ' x ' in linha.lower() and not ('📺' in linha):
-            partes_times = re.split(r'\s+[xX]\s+', linha)
-            if len(partes_times) == 2:
-                time_casa_site = partes_times[0].strip()
-                time_fora_site = partes_times[1].strip()
+        # 2. Identifica os Times (contém " x " ou " X ")
+        elif ' x ' in texto.lower():
+            partes = re.split(r'\s+[xX]\s+', texto)
+            if len(partes) == 2:
+                time_casa_site = partes[0].strip()
+                time_fora_site = partes[1].strip()
 
-        # 3. Extrai a Transmissão (linha contendo '📺' ou termos de TV)
-        elif '📺' in linha or 'tv' in linha.lower():
-            canais = linha.replace('📺', '').strip()
+        # 3. O que sobrou após os times costuma ser o canal (ex: "PREMIERE", "SPORTV")
+        # Ignora se for o horário/liga ou os times
+        elif not re.search(r'\b\d{2}:\d{2}\b', texto) and not (' x ' in texto.lower()):
+            # Se não for o caractere do emoji ou aspas soltas
+            texto_limpo = texto.replace('"', '').replace("'", "").strip()
+            if texto_limpo and texto_limpo != '📺':
+                canais = texto_limpo
 
     return {
         "liga_site": liga_site,
@@ -42,12 +53,9 @@ def extrair_dados_do_bloco(texto_bloco):
 
 
 def buscar_transmissao_site(time_casa, time_fora, horario_previsto):
-    """
-    Realiza o scraping no site e aplica Fuzzy Matching para localizar a partida e sua transmissão.
-    """
     url = "https://doentesporfutebol.com.br/guiadejogos/"
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
     }
 
     try:
@@ -59,26 +67,24 @@ def buscar_transmissao_site(time_casa, time_fora, horario_previsto):
         paragrafos = soup.find_all('p')
         
         LIMIAR_SIMILARIDADE = 80
-        hora_alvo = horario_previsto.strip()
+        hora_alvo = str(horario_previsto).strip()
 
         for p in paragrafos:
-            texto_bloco = p.get_text(separator="\n").strip()
+            texto_bloco = p.get_text().strip()
             texto_lower = texto_bloco.lower()
 
-            # 1. Filtro pelo Horário
+            # Filtra pelo horário no parágrafo
             if hora_alvo not in texto_lower:
                 continue
 
-            # 2. Fuzzy Matching nos nomes dos times
             score_casa = fuzz.partial_ratio(time_casa.lower(), texto_lower) if time_casa else 0
             score_fora = fuzz.partial_ratio(time_fora.lower(), texto_lower) if time_fora else 0
 
-            # 3. Match confirmado no horário + pelo menos um dos times
             if score_casa >= LIMIAR_SIMILARIDADE or score_fora >= LIMIAR_SIMILARIDADE:
                 print(f"✅ MATCH ({score_casa}% / {score_fora}%): {time_casa} x {time_fora} às {hora_alvo}")
-                return extrair_dados_do_bloco(texto_bloco)
+                # PASSA A TAG <P> DIRETAMENTE AQUI:
+                return extrair_dados_do_bloco(p)
 
-        print(f"⚠️ Jogo {time_casa} x {time_fora} ({hora_alvo}) não encontrado na grade do site.")
         return None
 
     except Exception as e:
@@ -102,13 +108,16 @@ def msg_por_fixture():
             f.id_league_api AS api_league,
             f.game_date,
             f.game_time,
-            t1.api_id AS home_api_id,
+            t1.id_api AS home_api_id,        
             t1.site_name AS home_site_name,
-            t2.api_id AS away_api_id,
-            t2.site_name AS away_site_name
+            t2.id_api AS away_api_id,        
+            t2.site_name AS away_site_name,
+            l.api_name AS league_api_name,
+            l.site_name AS league_site_name
         FROM fixtures f
-        JOIN teams t1 ON f.id_home_api = t1.api_id
-        JOIN teams t2 ON f.id_away_api = t2.api_id
+        JOIN teams t1 ON f.id_home_api::integer = t1.id_api
+        JOIN teams t2 ON f.id_away_api::integer = t2.id_api
+        LEFT JOIN leagues l ON f.id_league_api::integer = l.id_api
         WHERE f.game_date = CURRENT_DATE;
     """
     
@@ -127,11 +136,19 @@ def msg_por_fixture():
             fixture_id = jogo[0]
             home_api_name = jogo[1]
             away_api_name = jogo[2]
-            horario = jogo[5]
+            horario_raw = jogo[5]
+            if hasattr(horario_raw, 'strftime'):
+                horario = horario_raw.strftime("%H:%M")
+            else:
+                horario = str(horario_raw)[:5]
+
             home_api_id = jogo[6]
             home_site_name = jogo[7]
             away_api_id = jogo[8]
             away_site_name = jogo[9]
+            league_api_name = jogo[10]
+            league_site_name = jogo[11]
+
 
             # Fallback inteligente: Pega site_name se existir, senão usa api_name
             time_casa = home_site_name or home_api_name
@@ -142,19 +159,19 @@ def msg_por_fixture():
 
             if dados_scrape:
                 transmissao = dados_scrape['canais']
-                liga = dados_scrape['liga_site'] or "Futebol Profissional"
+                liga = dados_scrape['liga_site'] or league_site_name or league_api_name or "Futebol Profissional"
 
                 # Atualiza site_name do time da casa se ainda estiver NULL no banco
                 if dados_scrape['time_casa_site'] and not home_site_name:
                     cursor.execute(
-                        "UPDATE teams SET site_name = %s WHERE api_id = %s;",
+                        "UPDATE teams SET site_name = %s WHERE id_api = %s;",
                         (dados_scrape['time_casa_site'], home_api_id)
                     )
 
-                # Atualiza site_name do time de fora se ainda estiver NULL no banco
+                # Atualiza site_name do time de fora
                 if dados_scrape['time_fora_site'] and not away_site_name:
                     cursor.execute(
-                        "UPDATE teams SET site_name = %s WHERE api_id = %s;",
+                        "UPDATE teams SET site_name = %s WHERE id_api = %s;",
                         (dados_scrape['time_fora_site'], away_api_id)
                     )
 

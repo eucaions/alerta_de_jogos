@@ -103,6 +103,13 @@ def create_tables():
             );
         """)
 
+        cursor.execute(""" CREATE TABLE IF NOT EXISTS admin_logs (
+            id SERIAL PRIMARY KEY,
+            tipo VARCHAR(50) NOT NULL,
+            detalhes JSONB NOT NULL,
+            criado_em TIMESTAMP DEFAULT NOW()
+        ); """)
+
 
         conn.commit()
         print("✨ Estrutura do banco de dados criada com sucesso dentro do Docker!")
