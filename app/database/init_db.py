@@ -90,9 +90,9 @@ def create_tables():
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS fixtures (
                 id SERIAL PRIMARY KEY,
-                id_home_api VARCHAR(100) NOT NULL,
-                id_away_api VARCHAR(100) NOT NULL,
-                id_league_api VARCHAR(100) NOT NULL,
+                id_home_api INTEGER NOT NULL,
+                id_away_api INTEGER NOT NULL,
+                id_league_api INTEGER NOT NULL,
                 game_date DATE NOT NULL,
                 game_time TIME NOT NULL,    
                 status VARCHAR(30) NOT NULL,
