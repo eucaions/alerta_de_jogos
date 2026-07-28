@@ -35,10 +35,13 @@ app.add_middleware(
 )
 
 
-@app.get("/")
-def home():
-
-    return FileResponse("app/templates/index.html")
+@app.get("/", response_class=HTMLResponse)
+def index(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="index.html",
+        context={}
+    )
 
 """ @app.get("/api/jogos")
 def pegar_jogos_json():
