@@ -1,11 +1,7 @@
 import os
-import requests
 import telebot
 from dotenv import load_dotenv
-from app.database.queries import (
-    obter_ou_criar_usuario_por_telegram,
-    obter_todos_usuarios_com_favoritos
-)
+from app.database.queries import obter_ou_criar_usuario_por_telegram, obter_todos_usuarios_com_favoritos
 
 load_dotenv()
 
@@ -14,7 +10,7 @@ bot = telebot.TeleBot(TOKEN)
 
 
 def enviar_mensagem(texto_final: str, chat_id: str) -> bool:
-    """Envia uma mensagem formatada via Telegram."""
+    """Envia a agenda de jogos formatada para um chat_id do Telegram."""
     try:
         bot.send_message(chat_id=chat_id, text=texto_final, parse_mode="HTML")
         print(f"✅ Mensagem enviada com sucesso para chat_id: {chat_id}")
@@ -25,7 +21,7 @@ def enviar_mensagem(texto_final: str, chat_id: str) -> bool:
 
 
 def disparar_agenda_matinal_usuarios(mensagens_por_time):
-    """Percorre os usuários cadastrados e envia as agendas dos times favoritos."""
+    """Percorre os usuários cadastrados e envia a agenda dos times favoritos."""
     usuarios = obter_todos_usuarios_com_favoritos()
 
     if not usuarios:
@@ -34,7 +30,7 @@ def disparar_agenda_matinal_usuarios(mensagens_por_time):
 
     for usuario in usuarios:
         chat_id = usuario[1]
-        times_favoritos = usuario[2]
+        times_favoritos = usuario[2]  # Lista de IDs de API dos times favoritos
 
         conjunto_mensagens = set()
 
@@ -50,26 +46,34 @@ def disparar_agenda_matinal_usuarios(mensagens_por_time):
 
 @bot.message_handler(commands=['start'])
 def boas_vindas(message):
-    chat_id = str(message.chat.id)
-    nome = message.from_user.first_name
-    
-    # Registra/garante o usuário na tabela 'users'
-    user_id = obter_ou_criar_usuario_por_telegram(chat_id)
-    
-    # Endereço da aplicação Web 
-    DOMINIO_APP = os.getenv("APP_URL", "http://localhost:8000")
-    link_favoritos = f"{DOMINIO_APP}/favoritos/{chat_id}"
-    
-    texto = (
-        f"Olá, <b>{nome}</b>! 👋\n\n"
-        f"Para escolher seus times do coração e receber a agenda matinal de jogos, "
-        f"clique no link abaixo:\n\n"
-        f"👉 <a href='{link_favoritos}'>Configurar Times Favoritos</a>"
-    )
-    
-    bot.reply_to(message, texto, parse_mode="HTML")
+    try:
+        chat_id = str(message.chat.id)
+        nome = message.from_user.first_name
+        
+        # 1. Garante que o usuário existe no PostgreSQL
+        user_id = obter_ou_criar_usuario_por_telegram(chat_id)
+        
+        # 2. Pega o endereço base configurado
+        base_url = os.getenv("APP_URL", "http://localhost:8000").rstrip("/")
+        link_favoritos = f"{base_url}/favoritos/{chat_id}"
+        
+        # 3. Monta o texto garantindo o HTML sem quebras na tag <a>
+        texto = (
+            f"Olá, <b>{nome}</b>! 👋\n\n"
+            f"Seja bem-vindo ao seu assistente de <b>Transmissão de Futebol</b>!\n\n"
+            f"Acesse o link abaixo no seu navegador para escolher seus times favoritos:\n\n"
+            f"{link_favoritos}"
+        )
+        
+        bot.reply_to(message, texto, parse_mode="HTML")
+        print(f"✅ Resposta enviada com sucesso para {nome} com o link: {link_favoritos}")
+
+    except Exception as e:
+        print(f"❌ ERRO NO BOAS_VINDAS: {e}")
 
 
 if __name__ == "__main__":
-    print("🤖 Bot do Telegram iniciado e escutando mensagens...")
+    print("🤖 Limpando webhooks antigos...")
+    bot.remove_webhook()
+    print("🤖 Bot do Telegram iniciado! Escutando mensagens...")
     bot.infinity_polling()
