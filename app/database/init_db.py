@@ -37,60 +37,78 @@ def create_tables():
         cursor.execute("DROP TABLE IF EXISTS fixture CASCADE;")
         cursor.execute("DROP TABLE IF EXISTS team CASCADE;")
         cursor.execute("DROP TABLE IF EXISTS league CASCADE;")
-        cursor.execute("DROP TABLE IF EXISTS leagues CASCADE;")
         cursor.execute("DROP TABLE IF EXISTS country CASCADE;")
-
+        cursor.execute("DROP TABLE IF EXISTS user_favorites CASCADE;")
+        cursor.execute("DROP TABLE IF EXISTS fixtures CASCADE;")
+        cursor.execute("DROP TABLE IF EXISTS teams CASCADE;")
+        cursor.execute("DROP TABLE IF EXISTS leagues CASCADE;")
+        cursor.execute("DROP TABLE IF EXISTS countries CASCADE;")
         
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS country (
+            CREATE TABLE IF NOT EXISTS countries (
                 id SERIAL PRIMARY KEY,
                 name VARCHAR(100) NOT NULL UNIQUE
             );
         """)
 
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS league (
+            CREATE TABLE IF NOT EXISTS leagues (
                 id SERIAL PRIMARY KEY,
-                name VARCHAR(100),
-                api_id INTEGER NOT NULL UNIQUE,  -- Adicionado UNIQUE para o seed de ligas
+                site_name VARCHAR(100),
+                id_api INTEGER NOT NULL UNIQUE,
                 api_name VARCHAR(100) NOT NULL,
-                country_id INTEGER REFERENCES country(id) ON DELETE SET NULL
+                country_id INTEGER REFERENCES countries(id) ON DELETE SET NULL
             );
         """)
 
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS team (
+            CREATE TABLE IF NOT EXISTS teams (
                 id SERIAL PRIMARY KEY,
-                api_id INTEGER NOT NULL UNIQUE,
+                id_api INTEGER NOT NULL UNIQUE,
                 api_name VARCHAR(100) NOT NULL,
                 site_name VARCHAR(100),
-                country_id INTEGER REFERENCES country(id) ON DELETE SET NULL
+                country_id INTEGER REFERENCES countries(id) ON DELETE SET NULL
+            );
+        """)
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                telegram_chat_id VARCHAR(100) NOT NULL UNIQUE,
+                created_at TIMESTAMP DEFAULT NOW()
             );
         """)
 
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS user_favorites (
-                id SERIAL PRIMARY KEY,
-                user_identifier VARCHAR(100) NOT NULL,
-                team_id INTEGER REFERENCES team(id) ON DELETE CASCADE
-                -- CORREÇÃO 2: Removida a vírgula que sobrava aqui
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                team_id INTEGER REFERENCES teams(id) ON DELETE CASCADE,
+                PRIMARY KEY (user_id, team_id)
             );
         """)
 
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS fixture (
+            CREATE TABLE IF NOT EXISTS fixtures (
                 id SERIAL PRIMARY KEY,
-                home_team VARCHAR(100) NOT NULL,
-                away_team VARCHAR(100) NOT NULL,
-                name_league VARCHAR(100) NOT NULL,
-                game_date TIMESTAMP NOT NULL,    
+                id_home_api INTEGER NOT NULL,
+                id_away_api INTEGER NOT NULL,
+                id_league_api INTEGER NOT NULL,
+                game_date DATE NOT NULL,
+                game_time TIME NOT NULL,    
                 status VARCHAR(30) NOT NULL,
                 processed BOOLEAN NOT NULL DEFAULT FALSE, 
 
-                team_id INTEGER REFERENCES team(id) ON DELETE CASCADE,
-                league_id INTEGER REFERENCES league(id) ON DELETE CASCADE
+                team_id INTEGER REFERENCES teams(id) ON DELETE CASCADE,
+                league_id INTEGER REFERENCES leagues(id) ON DELETE CASCADE
             );
         """)
+
+        cursor.execute(""" CREATE TABLE IF NOT EXISTS admin_logs (
+            id SERIAL PRIMARY KEY,
+            tipo VARCHAR(50) NOT NULL,
+            detalhes JSONB NOT NULL,
+            criado_em TIMESTAMP DEFAULT NOW()
+        ); """)
 
 
         conn.commit()

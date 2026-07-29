@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurar Notificações do Telegram</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h1 { font-size: 1.5rem; color: #1e293b; margin-bottom: 5px; }
+        p { color: #64748b; font-size: 0.9rem; margin-bottom: 20px; }
+        
+        .form-group { margin-bottom: 20px; }
+        label { display: block; font-weight: 600; color: #334155; margin-bottom: 6px; font-size: 0.95rem; }
+        .input-field { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; box-sizing: border-box; }
+        .input-field:focus { outline: none; border-color: #2563eb; }
+
+        /* Lista de times */
+        .teams-list { max-height: 300px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-bottom: 20px; }
+        .team-item { display: flex; align-items: center; padding: 10px; border-bottom: 1px solid #f1f5f9; cursor: pointer; }
+        .team-item:last-child { border-bottom: none; }
+        .team-item:hover { background-color: #f8fafc; }
+        .team-item input { margin-right: 12px; width: 18px; height: 18px; cursor: pointer; }
+
+        .btn-submit { width: 100%; background-color: #2563eb; color: white; border: none; padding: 12px; font-size: 1rem; font-weight: 600; border-radius: 8px; cursor: pointer; transition: background 0.2s; }
+        .btn-submit:hover { background-color: #1d4ed8; }
+        .alert-success { background-color: #dcfce7; color: #15803d; padding: 12px; border-radius: 8px; margin-bottom: 15px; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>⚽ Configurar Agenda de Jogos</h1>
+    <p>Informe seu Telegram Chat ID e selecione os times que deseja acompanhar.</p>
+
+    {% if mensagem_sucesso %}
+        <div class="alert-success">✅ {{ mensagem_sucesso }}</div>
+    {% endif %}
+
+    <form action="/favoritos/salvar" method="POST">
+        
+        <!-- Campo para capturar o ID do Telegram -->
+        <div class="form-group">
+            <label for="telegram_chat_id">📱 Seu ID do Telegram (Chat ID):</label>
+            <input 
+                type="text" 
+                id="telegram_chat_id" 
+                name="telegram_chat_id" 
+                class="input-field" 
+                placeholder="Ex: 123456789" 
+                value="{{ telegram_chat_id or '' }}" 
+                required
+            >
+        </div>
+
+        <div class="form-group">
+            <label>🔍 Buscar e Selecionar Times:</label>
+            <input type="text" id="searchInput" class="input-field" placeholder="Digite para filtrar o time..." onkeyup="filtrarTimes()">
+        </div>
+
+        <div class="teams-list" id="teamsContainer">
+            {% for time in todos_os_times %}
+            <label class="team-item">
+                <input type="checkbox" name="team_ids" value="{{ time.id }}" {% if time.id in favoritos_atuais %}checked{% endif %}>
+                <span class="team-name">{{ time.api_name }} {% if time.site_name %}({{ time.site_name }}){% endif %}</span>
+            </label>
+            {% endfor %}
+        </div>
+
+        <button type="submit" class="btn-submit">Salvar Notificações</button>
+    </form>
+</div>
+
+<script>
+    function filtrarTimes() {
+        const input = document.getElementById('searchInput').value.toLowerCase();
+        const items = document.querySelectorAll('.team-item');
+
+        items.forEach(item => {
+            const text = item.innerText.toLowerCase();
+            item.style.display = text.includes(input) ? "flex" : "none";
+        });
+    }
+</script>
+
+</body>
+</html>
