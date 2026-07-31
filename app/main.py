@@ -1,16 +1,15 @@
-import threading
+import os
 import logging
-import time
-from telebot.apihelper import ApiTelegramException
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request, Form
+
+from fastapi import FastAPI, Request, Form, Response, status
 from fastapi.responses import FileResponse, RedirectResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.scheduler import iniciar_scheduler
 import app.telegram_bot as telegram_module
-from app.telegram_bot import bot
+from app.telegram_bot import bot, processar_update_telegram
 from app.database.queries import (
     listar_todos_os_times,
     obter_favoritos_ids_usuario,
@@ -24,38 +23,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def rodar_bot_telegram():
-    """Roda a escuta do bot em background no Uvicorn Worker."""
-    logger.info("🤖 Thread do Bot do Telegram iniciada.")
-    
-    while True:
-        try:
-            if not bot:
-                logger.warning("⚠️ Bot não configurado.")
-                break
-                
-            logger.info("🤖 Limpando webhooks e iniciando polling continuo...")
-            bot.remove_webhook()
-            # Usa polling simples em loop ao inves de infinity_polling para evitar bloqueio no Uvicorn
-            bot.polling(non_stop=True, interval=1, timeout=20)
-
-        except ApiTelegramException as e:
-            if e.error_code == 409:
-                logger.warning("⚠️ Conflito 409 (Outra instância rodando). Aguardando 5s...")
-                time.sleep(5)
-            else:
-                logger.error(f"❌ Erro da API do Telegram ({e.error_code}): {e}")
-                time.sleep(5)
-        except Exception as e:
-            logger.error(f"❌ Erro no polling: {e}")
-            time.sleep(5)
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # ==========================================
-    # ON STARTUP: Inicia Scheduler e Bot Telegram
-    # ==========================================
     logger.info("🚀 [LIFESPAN] Aplicação iniciando...")
     
     # 1. Configura o Scheduler de envio matinal
@@ -65,33 +34,30 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"❌ [LIFESPAN] Falha ao iniciar o scheduler: {e}")
 
-    # 2. Inicia o Bot do Telegram em background com diagnósticos
+    # 2. Registra o WEBHOOK do Telegram apontando para a URL pública no Render
+    base_url = os.getenv("APP_URL", "https://jogos-alert-web.onrender.com").rstrip("/")
+    webhook_url = f"{base_url}/telegram-webhook"
+
     if bot and getattr(bot, 'token', None):
-        # Mostra os 5 últimos caracteres do token para confirmar que leu o token correto do Render
-        token_preview = bot.token[-5:] if bot.token else "???"
-        logger.info(f"🔑 [LIFESPAN] TELEGRAM_TOKEN detectado (final: ...{token_preview})")
-        
         try:
-            thread_bot = threading.Thread(target=rodar_bot_telegram, daemon=True)
-            thread_bot.start()
-            logger.info("✅ [LIFESPAN] Thread do Bot disparada em background com sucesso!")
+            logger.info(f"🔗 Registrando Webhook no Telegram: {webhook_url}")
+            bot.remove_webhook()
+            bot.set_webhook(url=webhook_url)
+            logger.info("✅ Webhook registrado com sucesso!")
         except Exception as e:
-            logger.error(f"❌ [LIFESPAN] Erro ao disparar thread do bot: {e}")
+            logger.error(f"❌ Falha ao registrar Webhook: {e}")
     else:
-        logger.error("❌ [LIFESPAN] Bot NÃO instanciado! A variável TELEGRAM_TOKEN está ausente ou vazia no painel do Render.")
+        logger.error("❌ Bot não configurado (TELEGRAM_TOKEN ausente).")
 
     yield
 
-    # ==========================================
-    # ON SHUTDOWN: Encerra conexões limpas
-    # ==========================================
     logger.info("🛑 [LIFESPAN] Aplicação encerrando...")
-    if bot:
+    if bot and getattr(bot, 'token', None):
         try:
-            bot.stop_bot()
-            logger.info("✅ [LIFESPAN] Bot do Telegram encerrado com sucesso.")
+            bot.remove_webhook()
+            logger.info("✅ Webhook removido no encerramento.")
         except Exception as e:
-            logger.error(f"⚠️ [LIFESPAN] Erro ao parar o bot: {e}")
+            logger.error(f"⚠️ Erro ao remover webhook: {e}")
 
 
 app = FastAPI(lifespan=lifespan)
@@ -111,6 +77,20 @@ def index(request: Request):
         name="index.html",
         context={}
     )
+
+
+# 📍 ROTA DO WEBHOOK: Recebe as atualizações do Telegram via HTTP POST
+@app.post("/telegram-webhook")
+async def telegram_webhook(request: Request):
+    """Recebe as mensagens enviadas pelos usuários no Telegram via Webhook HTTP."""
+    try:
+        json_data = await request.json()
+        logger.info(f"📩 Webhook recebido: {json_data}")
+        processar_update_telegram(json_data)
+        return Response(status_code=status.HTTP_200_OK)
+    except Exception as e:
+        logger.error(f"❌ Erro ao processar Webhook: {e}")
+        return Response(status_code=status.HTTP_400_BAD_REQUEST)
 
 
 @app.get("/admin")

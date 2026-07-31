@@ -96,6 +96,11 @@ if bot:
         except Exception as e:
             print(f"❌ ERRO NO ECHO: {e}")
 
+def processar_update_telegram(update_json: dict):
+    """Recebe o JSON do Webhook do Telegram e processa as mensagens."""
+    if bot:
+        update = telebot.types.Update.de_json(update_json)
+        bot.process_new_updates([update])
 
 if __name__ == "__main__":
     if bot:
