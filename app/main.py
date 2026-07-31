@@ -55,30 +55,42 @@ async def lifespan(app: FastAPI):
     # ==========================================
     # ON STARTUP: Inicia Scheduler e Bot Telegram
     # ==========================================
-    logger.info("🚀 Aplicação iniciando...")
+    logger.info("🚀 [LIFESPAN] Aplicação iniciando...")
     
     # 1. Configura o Scheduler de envio matinal
     try:
         iniciar_scheduler()
-        logger.info("✅ Scheduler configurado com sucesso!")
+        logger.info("✅ [LIFESPAN] Scheduler configurado com sucesso!")
     except Exception as e:
-        logger.error(f"❌ Falha ao iniciar o scheduler: {e}")
+        logger.error(f"❌ [LIFESPAN] Falha ao iniciar o scheduler: {e}")
 
-    # 2. Inicia o Bot do Telegram em background
-    if bot:
-        thread_bot = threading.Thread(target=rodar_bot_telegram, daemon=True)
-        thread_bot.start()
+    # 2. Inicia o Bot do Telegram em background com diagnósticos
+    if bot and getattr(bot, 'token', None):
+        # Mostra os 5 últimos caracteres do token para confirmar que leu o token correto do Render
+        token_preview = bot.token[-5:] if bot.token else "???"
+        logger.info(f"🔑 [LIFESPAN] TELEGRAM_TOKEN detectado (final: ...{token_preview})")
+        
+        try:
+            thread_bot = threading.Thread(target=rodar_bot_telegram, daemon=True)
+            thread_bot.start()
+            logger.info("✅ [LIFESPAN] Thread do Bot disparada em background com sucesso!")
+        except Exception as e:
+            logger.error(f"❌ [LIFESPAN] Erro ao disparar thread do bot: {e}")
     else:
-        logger.warning("⚠️ Bot do Telegram não instanciado (TELEGRAM_TOKEN ausente).")
+        logger.error("❌ [LIFESPAN] Bot NÃO instanciado! A variável TELEGRAM_TOKEN está ausente ou vazia no painel do Render.")
 
     yield
 
     # ==========================================
     # ON SHUTDOWN: Encerra conexões limpas
     # ==========================================
-    logger.info("🛑 Aplicação encerrando")
+    logger.info("🛑 [LIFESPAN] Aplicação encerrando...")
     if bot:
-        bot.stop_bot()
+        try:
+            bot.stop_bot()
+            logger.info("✅ [LIFESPAN] Bot do Telegram encerrado com sucesso.")
+        except Exception as e:
+            logger.error(f"⚠️ [LIFESPAN] Erro ao parar o bot: {e}")
 
 
 app = FastAPI(lifespan=lifespan)
