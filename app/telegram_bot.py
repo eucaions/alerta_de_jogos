@@ -1,16 +1,25 @@
 import os
 import telebot
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from dotenv import load_dotenv
-from app.database.queries import obter_ou_criar_usuario_por_telegram, obter_todos_usuarios_com_favoritos
+from app.database.queries import (
+    obter_ou_criar_usuario_por_telegram,
+    obter_todos_usuarios_com_favoritos
+)
 
 load_dotenv()
 
 TOKEN = os.getenv("TELEGRAM_TOKEN")
-bot = telebot.TeleBot(TOKEN)
+
+# Instancia o bot apenas se o TOKEN existir, evitando crash no startup
+bot = telebot.TeleBot(TOKEN) if TOKEN else None
 
 
 def enviar_mensagem(texto_final: str, chat_id: str) -> bool:
     """Envia a agenda de jogos formatada para um chat_id do Telegram."""
+    if not bot:
+        print("⚠️ Bot não inicializado. Verifique a variável TELEGRAM_TOKEN.")
+        return False
     try:
         bot.send_message(chat_id=chat_id, text=texto_final, parse_mode="HTML")
         print(f"✅ Mensagem enviada com sucesso para chat_id: {chat_id}")
@@ -44,36 +53,44 @@ def disparar_agenda_matinal_usuarios(mensagens_por_time):
             enviar_mensagem(texto_final, chat_id)
 
 
-@bot.message_handler(commands=['start'])
-def boas_vindas(message):
-    try:
-        chat_id = str(message.chat.id)
-        nome = message.from_user.first_name
-        
-        # 1. Garante que o usuário existe no PostgreSQL
-        user_id = obter_ou_criar_usuario_por_telegram(chat_id)
-        
-        # 2. Pega o endereço base configurado
-        base_url = os.getenv("APP_URL", "http://localhost:8000").rstrip("/")
-        link_favoritos = f"{base_url}/favoritos/{chat_id}"
-        
-        # 3. Monta o texto garantindo o HTML sem quebras na tag <a>
-        texto = (
-            f"Olá, <b>{nome}</b>! 👋\n\n"
-            f"Seja bem-vindo ao seu assistente de <b>Transmissão de Futebol</b>!\n\n"
-            f"Acesse o link abaixo no seu navegador para escolher seus times favoritos:\n\n"
-            f"{link_favoritos}"
-        )
-        
-        bot.reply_to(message, texto, parse_mode="HTML")
-        print(f"✅ Resposta enviada com sucesso para {nome} com o link: {link_favoritos}")
+# Registra o handler apenas se o bot estiver instanciado
+if bot:
+    @bot.message_handler(commands=['start'])
+    def boas_vindas(message):
+        try:
+            chat_id = str(message.chat.id)
+            nome = message.from_user.first_name
+            
+            # 1. Garante que o usuário existe no PostgreSQL
+            user_id = obter_ou_criar_usuario_por_telegram(chat_id)
+            
+            # 2. Pega o endereço base do Render (.env)
+            base_url = os.getenv("APP_URL", "http://localhost:8000").rstrip("/")
+            link_favoritos = f"{base_url}/favoritos/{chat_id}"
+            
+            # 3. Cria o Botão Inline bonito para o Telegram
+            markup = InlineKeyboardMarkup()
+            btn_favoritos = InlineKeyboardButton(text="⚙️ Configurar Meus Times", url=link_favoritos)
+            markup.add(btn_favoritos)
+            
+            texto = (
+                f"Olá, <b>{nome}</b>! 👋\n\n"
+                f"Seja bem-vindo ao seu assistente de <b>Transmissão de Futebol</b>!\n\n"
+                f"Clique no botão abaixo para escolher seus times do coração e receber a agenda matinal de jogos:"
+            )
+            
+            bot.reply_to(message, texto, parse_mode="HTML", reply_markup=markup)
+            print(f"✅ Resposta enviada com sucesso para {nome} com o link: {link_favoritos}")
 
-    except Exception as e:
-        print(f"❌ ERRO NO BOAS_VINDAS: {e}")
+        except Exception as e:
+            print(f"❌ ERRO NO BOAS_VINDAS: {e}")
 
 
 if __name__ == "__main__":
-    print("🤖 Limpando webhooks antigos...")
-    bot.remove_webhook()
-    print("🤖 Bot do Telegram iniciado! Escutando mensagens...")
-    bot.infinity_polling()
+    if bot:
+        print("🤖 Limpando webhooks antigos...")
+        bot.remove_webhook()
+        print("🤖 Bot do Telegram iniciado! Escutando mensagens...")
+        bot.infinity_polling()
+    else:
+        print("❌ Não foi possível iniciar o bot localmente: TELEGRAM_TOKEN ausente no .env.")
