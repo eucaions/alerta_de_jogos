@@ -1,5 +1,6 @@
 import os
 import telebot
+import logging
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from dotenv import load_dotenv
 from app.database.queries import (
@@ -8,6 +9,8 @@ from app.database.queries import (
 )
 
 load_dotenv()
+
+telebot.logger.setLevel(logging.CRITICAL)
 
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 
