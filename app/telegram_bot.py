@@ -14,27 +14,29 @@ load_dotenv()
 telebot.logger.setLevel(logging.CRITICAL)
 
 TOKEN = os.getenv("TELEGRAM_TOKEN")
+
+# Instância única global do Bot
 bot = telebot.TeleBot(TOKEN) if TOKEN else None
 
 
 def processar_update_telegram(update_json: dict):
-    """Desserializa o JSON recebido via webhook e executa os handlers."""
+    """Recebe o dicionário do FastAPI e repassa para os handlers do telebot."""
     if not bot:
-        print("⚠️ [WEBHOOK] Instância do bot não encontrada!")
+        print("⚠️ [BOT] Instância do bot não encontrada (TELEGRAM_TOKEN ausente).")
         return
         
     try:
         update = telebot.types.Update.de_json(update_json)
         if update:
-            print(f"🔄 [WEBHOOK] Processando mensagem/comando ID: {update.update_id}")
+            print(f"🔄 [BOT] Processando mensagem do chat_id: {update.message.chat.id if update.message else 'N/A'}")
             bot.process_new_updates([update])
-        else:
-            print("⚠️ [WEBHOOK] Update nulo recebido.")
     except Exception as e:
-        print(f"❌ [WEBHOOK ERRO] Falha ao processar handlers: {e}")
+        print(f"❌ [BOT ERRO] Falha ao processar update: {e}")
+        traceback.print_exc()
+
 
 def enviar_mensagem(texto_final: str, chat_id: str) -> bool:
-    """Envia a agenda de jogos formatada para um chat_id do Telegram."""
+    """Envia mensagem direta para um chat_id."""
     if not bot:
         return False
     try:
@@ -46,7 +48,7 @@ def enviar_mensagem(texto_final: str, chat_id: str) -> bool:
 
 
 def disparar_agenda_matinal_usuarios(mensagens_por_time):
-    """Percorre os usuários cadastrados e envia a agenda dos times favoritos."""
+    """Dispara o resumo dos jogos para os usuários cadastrados."""
     usuarios = obter_todos_usuarios_com_favoritos()
 
     if not usuarios:
@@ -69,21 +71,19 @@ def disparar_agenda_matinal_usuarios(mensagens_por_time):
             enviar_mensagem(texto_final, chat_id)
 
 
-# Registra os handlers no bot
+# ==========================================================
+# REGISTRO DE HANDLERS (Declarados diretamente no escopo)
+# ==========================================================
 if bot:
     @bot.message_handler(commands=['start'])
     def boas_vindas(message):
-        print(f"📩 [HANDLER /START] Executando boas_vindas para {message.from_user.first_name}...")
+        print(f"📩 [HANDLER /START] Chamado por {message.from_user.first_name} ({message.chat.id})")
         try:
             chat_id = str(message.chat.id)
             nome = message.from_user.first_name
             
-            # 1. Tenta salvar/buscar no banco
-            print("🗄️ [HANDLER /START] Consultando banco de dados...")
             user_id = obter_ou_criar_usuario_por_telegram(chat_id)
-            print(f"🗄️ [HANDLER /START] Usuário ID interno: {user_id}")
             
-            # 2. Monta o Link
             base_url = os.getenv("APP_URL", "https://jogos-alert-web.onrender.com").rstrip("/")
             link_favoritos = f"{base_url}/favoritos/{chat_id}"
             
@@ -97,9 +97,8 @@ if bot:
                 f"Clique no botão abaixo para escolher seus times favoritos:"
             )
             
-            # 3. Envia a resposta
             bot.reply_to(message, texto, parse_mode="HTML", reply_markup=markup)
-            print(f"✅ [HANDLER /START] Resposta enviada com sucesso no Telegram para {nome}!")
+            print(f"✅ [HANDLER /START] Resposta enviada com sucesso no Telegram!")
 
         except Exception as e:
             print(f"❌ [HANDLER /START ERRO]: {e}")
@@ -107,7 +106,7 @@ if bot:
 
     @bot.message_handler(func=lambda message: True)
     def escutar_qualquer_mensagem(message):
-        print(f"📩 [HANDLER ECHO] Mensagem genérica recebida: {message.text}")
+        print(f"📩 [HANDLER ECHO] Recebido: '{message.text}' de {message.from_user.first_name}")
         try:
             bot.reply_to(message, f"Recebi sua mensagem: {message.text}")
         except Exception as e:

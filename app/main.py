@@ -79,20 +79,19 @@ def index(request: Request):
     )
 
 
-# 📍 ROTA DO WEBHOOK: Recebe as atualizações do Telegram via HTTP POST
 @app.post("/telegram-webhook")
 async def telegram_webhook(request: Request):
-    """Recebe o JSON do Telegram e despacha para os handlers do telebot."""
+    """Recebe o JSON HTTP do Telegram e delega o processamento para o módulo do bot."""
     try:
         json_data = await request.json()
-        logger.info(f"📩 Webhook payload recebido: {json_data}")
+        logger.info(f"📩 [WEBHOOK ROTA] Recebido update do Telegram!")
         
-        # Chama o processador do módulo do bot
-        telegram_module.processar_update_telegram(json_data)
+        # Chama a função centralizada do bot
+        processar_update_telegram(json_data)
         
         return Response(status_code=status.HTTP_200_OK)
     except Exception as e:
-        logger.error(f"❌ Erro ao processar payload do Webhook: {e}")
+        logger.error(f"❌ [WEBHOOK ROTA ERRO]: {e}")
         return Response(status_code=status.HTTP_200_OK)
 
 
