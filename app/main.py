@@ -6,7 +6,7 @@ from fastapi import FastAPI, Request, Form, Response, status
 from fastapi.responses import FileResponse, RedirectResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
-
+from app.database.seed_db import rodar_seeder_completo
 from app.scheduler import iniciar_scheduler
 import app.telegram_bot as telegram_module
 from app.telegram_bot import bot, processar_update_telegram
@@ -29,7 +29,8 @@ async def lifespan(app: FastAPI):
     
     # 1. Garante que as tabelas existem no PostgreSQL do Render
     try:
-        create_tables()
+        import threading
+        threading.Thread(target=rodar_seeder_completo, daemon=True).start()
     except Exception as e:
         logger.error(f"⚠️ Falha ao verificar/criar tabelas: {e}")
 
