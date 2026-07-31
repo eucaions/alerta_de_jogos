@@ -1,7 +1,7 @@
 import os
 import logging
 from contextlib import asynccontextmanager
-
+from app.database.init_db import create_tables
 from fastapi import FastAPI, Request, Form, Response, status
 from fastapi.responses import FileResponse, RedirectResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -27,12 +27,17 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     logger.info("🚀 [LIFESPAN] Aplicação iniciando...")
     
-    # 1. Configura o Scheduler de envio matinal
+    # 1. Garante que as tabelas existem no PostgreSQL do Render
+    try:
+        create_tables()
+    except Exception as e:
+        logger.error(f"⚠️ Falha ao verificar/criar tabelas: {e}")
+
+    # 2. Configura o Scheduler
     try:
         iniciar_scheduler()
-        logger.info("✅ [LIFESPAN] Scheduler configurado com sucesso!")
     except Exception as e:
-        logger.error(f"❌ [LIFESPAN] Falha ao iniciar o scheduler: {e}")
+        logger.error(f"❌ Falha no scheduler: {e}")
 
     # 2. Registra o WEBHOOK do Telegram apontando para a URL pública no Render
     base_url = os.getenv("APP_URL", "https://jogos-alert-web.onrender.com").rstrip("/")

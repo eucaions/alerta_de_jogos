@@ -1,48 +1,52 @@
-import psycopg
 import os
-from dotenv import load_dotenv
-from pathlib import Path
+import psycopg
+import logging
 import traceback
+from pathlib import Path
+from dotenv import load_dotenv
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 load_dotenv(BASE_DIR / ".env", override=True)
 
-print(os.getenv("DB_HOST"))
-print(os.getenv("DB_PORT"))
-print(BASE_DIR / ".env")
+DATABASE_URL = os.getenv("DATABASE_URL")
+
 
 def obter_conexao():
+    """Conecta ao PostgreSQL usando DATABASE_URL (Render/Nuvem) ou variáveis individuais (.env/Docker)."""
+    if DATABASE_URL:
+        # Prioridade 1: Conexão via URL (Render)
+        return psycopg.connect(DATABASE_URL)
+    
+    # Prioridade 2: Fallback via variáveis individuais (Local/Docker)
     config_conexao = {
-        "dbname": os.getenv("DB_NAME"),
-        "user": os.getenv("DB_USER"),
-        "password": os.getenv("DB_PASS"),
-        "host": os.getenv("DB_HOST"), 
-        "port": os.getenv("DB_PORT")
+        "dbname": os.getenv("DB_NAME", "postgres"),
+        "user": os.getenv("DB_USER", "postgres"),
+        "password": os.getenv("DB_PASS", "postgres"),
+        "host": os.getenv("DB_HOST", "localhost"),
+        "port": os.getenv("DB_PORT", "5432")
     }
     return psycopg.connect(**config_conexao)
 
 
-
-
 def create_tables():
-
+    """Cria a estrutura de tabelas no PostgreSQL."""
     conn = None
     try:
-        print("🔌 Conectando ao PostgreSQL no Docker...")
+        logger.info("🔌 Conectando ao PostgreSQL para criar DDL...")
         conn = obter_conexao()
         cursor = conn.cursor()
 
-
-        cursor.execute("DROP TABLE IF EXISTS user_favorites CASCADE;")
-        cursor.execute("DROP TABLE IF EXISTS fixture CASCADE;")
-        cursor.execute("DROP TABLE IF EXISTS team CASCADE;")
-        cursor.execute("DROP TABLE IF EXISTS league CASCADE;")
-        cursor.execute("DROP TABLE IF EXISTS country CASCADE;")
+        # Limpeza segura se necessário (opcional)
         cursor.execute("DROP TABLE IF EXISTS user_favorites CASCADE;")
         cursor.execute("DROP TABLE IF EXISTS fixtures CASCADE;")
         cursor.execute("DROP TABLE IF EXISTS teams CASCADE;")
         cursor.execute("DROP TABLE IF EXISTS leagues CASCADE;")
         cursor.execute("DROP TABLE IF EXISTS countries CASCADE;")
+        cursor.execute("DROP TABLE IF EXISTS users CASCADE;")
+        cursor.execute("DROP TABLE IF EXISTS admin_logs CASCADE;")
         
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS countries (
@@ -103,29 +107,30 @@ def create_tables():
             );
         """)
 
-        cursor.execute(""" CREATE TABLE IF NOT EXISTS admin_logs (
-            id SERIAL PRIMARY KEY,
-            tipo VARCHAR(50) NOT NULL,
-            detalhes JSONB NOT NULL,
-            criado_em TIMESTAMP DEFAULT NOW()
-        ); """)
-
+        cursor.execute(""" 
+            CREATE TABLE IF NOT EXISTS admin_logs (
+                id SERIAL PRIMARY KEY,
+                tipo VARCHAR(50) NOT NULL,
+                detalhes JSONB NOT NULL,
+                criado_em TIMESTAMP DEFAULT NOW()
+            ); 
+        """)
 
         conn.commit()
-        print("✨ Estrutura do banco de dados criada com sucesso dentro do Docker!")
+        logger.info("✨ Estrutura de tabelas verificada/criada com sucesso no PostgreSQL!")
         cursor.close()
         
     except Exception as e:
-        print(f"❌ Erro ao inicializar o banco de dados:")
+        logger.error("❌ Erro ao inicializar o banco de dados:")
         traceback.print_exc()
-
         if conn:
             conn.rollback()
             
     finally:
         if conn is not None:
             conn.close()
-            print("🔒 Conexão finalizada.")
+            logger.info("🔒 Conexão com banco encerrada após DDL.")
+
 
 if __name__ == "__main__":
     create_tables()
