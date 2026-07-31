@@ -9,6 +9,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.scheduler import iniciar_scheduler
+import app.telegram_bot as telegram_module
 from app.telegram_bot import bot
 from app.database.queries import (
     listar_todos_os_times,

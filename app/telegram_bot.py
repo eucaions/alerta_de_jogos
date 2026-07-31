@@ -56,10 +56,12 @@ def disparar_agenda_matinal_usuarios(mensagens_por_time):
             enviar_mensagem(texto_final, chat_id)
 
 
-# Registra o handler apenas se o bot estiver instanciado
+# Registra TODOS os handlers apenas se o bot estiver instanciado
 if bot:
+    # 1. Handler do comando /start
     @bot.message_handler(commands=['start'])
     def boas_vindas(message):
+        print(f"📩 [LOG CHEGOU!] Comando /start recebido de {message.from_user.first_name}")
         try:
             chat_id = str(message.chat.id)
             nome = message.from_user.first_name
@@ -80,10 +82,19 @@ if bot:
             )
             
             bot.reply_to(message, texto, parse_mode="HTML", reply_markup=markup)
-            print(f"✅ [HANDLER LOG] Resposta enviada com sucesso para {nome}")
+            print(f"✅ Resposta enviada com sucesso para {nome}")
 
         except Exception as e:
-            print(f"❌ [HANDLER LOG] ERRO NO BOAS_VINDAS: {e}")
+            print(f"❌ ERRO NO BOAS_VINDAS: {e}")
+
+    # 2. Handler para qualquer outra mensagem (Diagnóstico)
+    @bot.message_handler(func=lambda message: True)
+    def escutar_qualquer_mensagem(message):
+        print(f"📩 [LOG CHEGOU!] Mensagem recebida: '{message.text}' de {message.from_user.first_name}")
+        try:
+            bot.reply_to(message, f"Recebi sua mensagem: {message.text}")
+        except Exception as e:
+            print(f"❌ ERRO NO ECHO: {e}")
 
 
 if __name__ == "__main__":
