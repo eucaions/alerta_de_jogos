@@ -47,7 +47,7 @@ def oficialSeed(ligas=[]):
     }
     
     # Define o ano atual dinamicamente para a busca da temporada
-    SEASON_ATUAL = os.getenv("FOOTBALL_SEASON", "2026")
+    SEASON_ATUAL = os.getenv("FOOTBALL_SEASON", "2024")
 
     try:
         for liga_id in ligas:
