@@ -1,6 +1,7 @@
 import os
 import telebot
 import logging
+import traceback
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from dotenv import load_dotenv
 from app.database.queries import (
@@ -13,19 +14,31 @@ load_dotenv()
 telebot.logger.setLevel(logging.CRITICAL)
 
 TOKEN = os.getenv("TELEGRAM_TOKEN")
-
-# Instancia o bot apenas se o TOKEN existir, evitando crash no startup
 bot = telebot.TeleBot(TOKEN) if TOKEN else None
+
+
+def processar_update_telegram(update_json: dict):
+    """Recebe o JSON do Webhook do Telegram e processa os handlers."""
+    if not bot:
+        print("⚠️ [WEBHOOK] Bot não instanciado!")
+        return
+        
+    try:
+        update = telebot.types.Update.de_json(update_json)
+        print(f"🔄 [WEBHOOK] Processando update ID: {update.update_id}")
+        bot.process_new_updates([update])
+        print("✅ [WEBHOOK] Update processado pelo bot.")
+    except Exception as e:
+        print(f"❌ [WEBHOOK ERRO] Falha ao retransmitir update para o bot: {e}")
+        traceback.print_exc()
 
 
 def enviar_mensagem(texto_final: str, chat_id: str) -> bool:
     """Envia a agenda de jogos formatada para um chat_id do Telegram."""
     if not bot:
-        print("⚠️ Bot não inicializado. Verifique a variável TELEGRAM_TOKEN.")
         return False
     try:
         bot.send_message(chat_id=chat_id, text=texto_final, parse_mode="HTML")
-        print(f"✅ Mensagem enviada com sucesso para chat_id: {chat_id}")
         return True
     except Exception as e:
         print(f"❌ Erro ao enviar mensagem para {chat_id}: {e}")
@@ -42,7 +55,7 @@ def disparar_agenda_matinal_usuarios(mensagens_por_time):
 
     for usuario in usuarios:
         chat_id = usuario[1]
-        times_favoritos = usuario[2]  # Lista de IDs de API dos times favoritos
+        times_favoritos = usuario[2]
 
         conjunto_mensagens = set()
 
@@ -56,19 +69,22 @@ def disparar_agenda_matinal_usuarios(mensagens_por_time):
             enviar_mensagem(texto_final, chat_id)
 
 
-# Registra TODOS os handlers apenas se o bot estiver instanciado
+# Registra os handlers no bot
 if bot:
-    # 1. Handler do comando /start
     @bot.message_handler(commands=['start'])
     def boas_vindas(message):
-        print(f"📩 [LOG CHEGOU!] Comando /start recebido de {message.from_user.first_name}")
+        print(f"📩 [HANDLER /START] Executando boas_vindas para {message.from_user.first_name}...")
         try:
             chat_id = str(message.chat.id)
             nome = message.from_user.first_name
             
+            # 1. Tenta salvar/buscar no banco
+            print("🗄️ [HANDLER /START] Consultando banco de dados...")
             user_id = obter_ou_criar_usuario_por_telegram(chat_id)
+            print(f"🗄️ [HANDLER /START] Usuário ID interno: {user_id}")
             
-            base_url = os.getenv("APP_URL", "http://localhost:8000").rstrip("/")
+            # 2. Monta o Link
+            base_url = os.getenv("APP_URL", "https://jogos-alert-web.onrender.com").rstrip("/")
             link_favoritos = f"{base_url}/favoritos/{chat_id}"
             
             markup = InlineKeyboardMarkup()
@@ -81,32 +97,18 @@ if bot:
                 f"Clique no botão abaixo para escolher seus times favoritos:"
             )
             
+            # 3. Envia a resposta
             bot.reply_to(message, texto, parse_mode="HTML", reply_markup=markup)
-            print(f"✅ Resposta enviada com sucesso para {nome}")
+            print(f"✅ [HANDLER /START] Resposta enviada com sucesso no Telegram para {nome}!")
 
         except Exception as e:
-            print(f"❌ ERRO NO BOAS_VINDAS: {e}")
+            print(f"❌ [HANDLER /START ERRO]: {e}")
+            traceback.print_exc()
 
-    # 2. Handler para qualquer outra mensagem (Diagnóstico)
     @bot.message_handler(func=lambda message: True)
     def escutar_qualquer_mensagem(message):
-        print(f"📩 [LOG CHEGOU!] Mensagem recebida: '{message.text}' de {message.from_user.first_name}")
+        print(f"📩 [HANDLER ECHO] Mensagem genérica recebida: {message.text}")
         try:
             bot.reply_to(message, f"Recebi sua mensagem: {message.text}")
         except Exception as e:
-            print(f"❌ ERRO NO ECHO: {e}")
-
-def processar_update_telegram(update_json: dict):
-    """Recebe o JSON do Webhook do Telegram e processa as mensagens."""
-    if bot:
-        update = telebot.types.Update.de_json(update_json)
-        bot.process_new_updates([update])
-
-if __name__ == "__main__":
-    if bot:
-        print("🤖 Limpando webhooks antigos...")
-        bot.remove_webhook()
-        print("🤖 Bot do Telegram iniciado! Escutando mensagens...")
-        bot.infinity_polling()
-    else:
-        print("❌ Não foi possível iniciar o bot localmente: TELEGRAM_TOKEN ausente no .env.")
+            print(f"❌ [HANDLER ECHO ERRO]: {e}")
