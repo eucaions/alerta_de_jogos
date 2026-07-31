@@ -1,5 +1,7 @@
 import threading
 import logging
+import time
+from telebot.apihelper import ApiTelegramException
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import FileResponse, RedirectResponse, HTMLResponse
@@ -22,13 +24,31 @@ logger = logging.getLogger(__name__)
 
 
 def rodar_bot_telegram():
-    """Roda a escuta do bot em uma thread em background para não bloquear o servidor HTTP."""
-    logger.info("🤖 Iniciando polling do bot em background...")
-    try:
-        bot.remove_webhook()
-        bot.infinity_polling()
-    except Exception as e:
-        logger.error(f"❌ Falha no polling do Telegram Bot: {e}")
+    """Roda o polling do bot com resiliência a conflitos 409 e reconexão automática."""
+    logger.info("🤖 Thread do Bot do Telegram iniciada.")
+    
+    while True:
+        try:
+            if not bot:
+                logger.warning("⚠️ Bot não configurado. Encerrando thread do bot.")
+                break
+                
+            logger.info("🤖 Limpando webhooks e iniciando polling...")
+            bot.remove_webhook()
+            
+            # skip_pending=True ignora mensagens antigas acumuladas durante o deploy
+            bot.infinity_polling(skip_pending=True, timeout=20, long_polling_timeout=10)
+
+        except ApiTelegramException as e:
+            if e.error_code == 409:
+                logger.warning("⚠️ Conflito (409) detectado: Outra instância do bot está ativa. Aguardando 5s para tentar novamente...")
+                time.sleep(5)
+            else:
+                logger.error(f"❌ Erro da API do Telegram ({e.error_code}): {e}")
+                time.sleep(5)
+        except Exception as e:
+            logger.error(f"❌ Erro inesperado na thread do bot: {e}")
+            time.sleep(5)
 
 
 @asynccontextmanager
