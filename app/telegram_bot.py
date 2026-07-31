@@ -64,14 +64,11 @@ if bot:
             chat_id = str(message.chat.id)
             nome = message.from_user.first_name
             
-            # 1. Garante que o usuário existe no PostgreSQL
             user_id = obter_ou_criar_usuario_por_telegram(chat_id)
             
-            # 2. Pega o endereço base do Render (.env)
             base_url = os.getenv("APP_URL", "http://localhost:8000").rstrip("/")
             link_favoritos = f"{base_url}/favoritos/{chat_id}"
             
-            # 3. Cria o Botão Inline bonito para o Telegram
             markup = InlineKeyboardMarkup()
             btn_favoritos = InlineKeyboardButton(text="⚙️ Configurar Meus Times", url=link_favoritos)
             markup.add(btn_favoritos)
@@ -79,14 +76,14 @@ if bot:
             texto = (
                 f"Olá, <b>{nome}</b>! 👋\n\n"
                 f"Seja bem-vindo ao seu assistente de <b>Transmissão de Futebol</b>!\n\n"
-                f"Clique no botão abaixo para escolher seus times do coração e receber a agenda matinal de jogos:"
+                f"Clique no botão abaixo para escolher seus times favoritos:"
             )
             
             bot.reply_to(message, texto, parse_mode="HTML", reply_markup=markup)
-            print(f"✅ Resposta enviada com sucesso para {nome} com o link: {link_favoritos}")
+            print(f"✅ [HANDLER LOG] Resposta enviada com sucesso para {nome}")
 
         except Exception as e:
-            print(f"❌ ERRO NO BOAS_VINDAS: {e}")
+            print(f"❌ [HANDLER LOG] ERRO NO BOAS_VINDAS: {e}")
 
 
 if __name__ == "__main__":

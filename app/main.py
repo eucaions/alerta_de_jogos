@@ -24,30 +24,29 @@ logger = logging.getLogger(__name__)
 
 
 def rodar_bot_telegram():
-    """Roda o polling do bot com resiliência a conflitos 409 e reconexão automática."""
+    """Roda a escuta do bot em background no Uvicorn Worker."""
     logger.info("🤖 Thread do Bot do Telegram iniciada.")
     
     while True:
         try:
             if not bot:
-                logger.warning("⚠️ Bot não configurado. Encerrando thread do bot.")
+                logger.warning("⚠️ Bot não configurado.")
                 break
                 
-            logger.info("🤖 Limpando webhooks e iniciando polling...")
+            logger.info("🤖 Limpando webhooks e iniciando polling continuo...")
             bot.remove_webhook()
-            
-            # skip_pending=True ignora mensagens antigas acumuladas durante o deploy
-            bot.infinity_polling(skip_pending=True, timeout=20, long_polling_timeout=10)
+            # Usa polling simples em loop ao inves de infinity_polling para evitar bloqueio no Uvicorn
+            bot.polling(non_stop=True, interval=1, timeout=20)
 
         except ApiTelegramException as e:
             if e.error_code == 409:
-                logger.warning("⚠️ Conflito (409) detectado: Outra instância do bot está ativa. Aguardando 5s para tentar novamente...")
+                logger.warning("⚠️ Conflito 409 (Outra instância rodando). Aguardando 5s...")
                 time.sleep(5)
             else:
                 logger.error(f"❌ Erro da API do Telegram ({e.error_code}): {e}")
                 time.sleep(5)
         except Exception as e:
-            logger.error(f"❌ Erro inesperado na thread do bot: {e}")
+            logger.error(f"❌ Erro no polling: {e}")
             time.sleep(5)
 
 
