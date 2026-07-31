@@ -18,20 +18,20 @@ bot = telebot.TeleBot(TOKEN) if TOKEN else None
 
 
 def processar_update_telegram(update_json: dict):
-    """Recebe o JSON do Webhook do Telegram e processa os handlers."""
+    """Desserializa o JSON recebido via webhook e executa os handlers."""
     if not bot:
-        print("⚠️ [WEBHOOK] Bot não instanciado!")
+        print("⚠️ [WEBHOOK] Instância do bot não encontrada!")
         return
         
     try:
         update = telebot.types.Update.de_json(update_json)
-        print(f"🔄 [WEBHOOK] Processando update ID: {update.update_id}")
-        bot.process_new_updates([update])
-        print("✅ [WEBHOOK] Update processado pelo bot.")
+        if update:
+            print(f"🔄 [WEBHOOK] Processando mensagem/comando ID: {update.update_id}")
+            bot.process_new_updates([update])
+        else:
+            print("⚠️ [WEBHOOK] Update nulo recebido.")
     except Exception as e:
-        print(f"❌ [WEBHOOK ERRO] Falha ao retransmitir update para o bot: {e}")
-        traceback.print_exc()
-
+        print(f"❌ [WEBHOOK ERRO] Falha ao processar handlers: {e}")
 
 def enviar_mensagem(texto_final: str, chat_id: str) -> bool:
     """Envia a agenda de jogos formatada para um chat_id do Telegram."""

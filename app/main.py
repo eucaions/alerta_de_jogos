@@ -70,7 +70,7 @@ app.add_middleware(
 )
 
 
-@app.get("/", response_class=HTMLResponse)
+@app.api_route("/", methods=["GET", "HEAD"], response_class=HTMLResponse)
 def index(request: Request):
     return templates.TemplateResponse(
         request=request,
@@ -82,15 +82,18 @@ def index(request: Request):
 # 📍 ROTA DO WEBHOOK: Recebe as atualizações do Telegram via HTTP POST
 @app.post("/telegram-webhook")
 async def telegram_webhook(request: Request):
-    """Recebe as mensagens enviadas pelos usuários no Telegram via Webhook HTTP."""
+    """Recebe o JSON do Telegram e despacha para os handlers do telebot."""
     try:
         json_data = await request.json()
-        logger.info(f"📩 Webhook recebido: {json_data}")
-        processar_update_telegram(json_data)
+        logger.info(f"📩 Webhook payload recebido: {json_data}")
+        
+        # Chama o processador do módulo do bot
+        telegram_module.processar_update_telegram(json_data)
+        
         return Response(status_code=status.HTTP_200_OK)
     except Exception as e:
-        logger.error(f"❌ Erro ao processar Webhook: {e}")
-        return Response(status_code=status.HTTP_400_BAD_REQUEST)
+        logger.error(f"❌ Erro ao processar payload do Webhook: {e}")
+        return Response(status_code=status.HTTP_200_OK)
 
 
 @app.get("/admin")
