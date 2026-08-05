@@ -51,7 +51,7 @@ def oficialSeed(id):
     
     try:
         logger.info(f"🔍 [SEED] Consultando Liga ID {id}...")
-        url_api_league = f"https://v3.football.api-sports.io/teams?league={id}&season=2024"
+        url_api_league = f"https://v3.football.api-sports.io/leagues?id={id}"
         response = requests.get(url_api_league, headers=headers).json()
         
         # Se a API retornar mensagem de erro/cota, loga aqui
@@ -97,6 +97,7 @@ def oficialSeed(id):
                 conn.commit()
                 logger.info(f"✅ Liga '{nome_liga}' (ID {id}) gravada no banco.")
 
+                time.sleep(30)
                 url_api_teams = f"https://v3.football.api-sports.io/teams?league={id}&season=2024"
                 response_teams = requests.get(url_api_teams, headers=headers).json()
                 lista_times = response_teams.get('response', [])
